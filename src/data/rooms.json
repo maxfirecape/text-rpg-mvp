@@ -1,0 +1,26 @@
+[
+  {
+    "id": "room_01_cell",
+    "name": "Cell Block",
+    "description": "You are in a small room, behind a locked cell, in a dimly-lit stone building. Torches are lit on the wall. A disgruntled prisoner glares at three guards.",
+    "exits": {
+      "west": "room_02_corridor"
+    },
+    "interactables": {
+      "door": { "locked": true, "keyId": "003_Lockpick", "message": "The door is locked tight." },
+      "bed": { "message": "A concrete slab with rags." },
+      "prisoner": { "type": "npc", "name": "Purple-Haired Prisoner" }
+    }
+  },
+  {
+    "id": "room_02_corridor",
+    "name": "Prison Corridor",
+    "description": "A long stone hallway. To the South is the exit.",
+    "exits": {
+      "east": "room_01_cell"
+    },
+    "interactables": {
+      "chest": { "locked": true, "keyId": "003_Lockpick", "loot": "005_Tent" }
+    }
+  }
+]

@@ -1,0 +1,18 @@
+[
+    {
+      "id": "guard_01",
+      "name": "Prison Guard",
+      "hp": 30,
+      "maxHp": 30,
+      "stats": {
+        "str": 10,
+        "dex": 15
+      },
+      "xpReward": 40,
+      "loot": ["003_LuckyCharm"],
+      "messages": {
+        "lowHealth": "The Guard grunts and moans.",
+        "death": "The Guard has fallen!"
+      }
+    }
+  ]

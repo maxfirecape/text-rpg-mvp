@@ -1,0 +1,89 @@
+[
+    {
+      "id": "001_DualKnife",
+      "name": "Dual Knife",
+      "type": "weapon",
+      "damage": "2d4",
+      "statBonus": { "str": 0 },
+      "description": "Standard rogue weapons."
+    },
+    {
+      "id": "002_Longsword",
+      "name": "Longsword",
+      "type": "weapon",
+      "damage": "2d6",
+      "statBonus": { "str": 0 },
+      "description": "A heavy blade for fighters."
+    },
+    {
+      "id": "003_StandardStaff",
+      "name": "Standard Staff",
+      "type": "weapon",
+      "damage": "STR*0.66",
+      "statBonus": { "wis": 2 },
+      "description": "Basic magical focus."
+    },
+    {
+      "id": "001_CommonClothes",
+      "name": "Common Clothes",
+      "type": "armor",
+      "defense": 0.05,
+      "description": "Simple rags. Reduces damage by 5%."
+    },
+    {
+      "id": "001_CommonGloves",
+      "name": "Common Gloves",
+      "type": "accessory",
+      "defense": 0.01,
+      "description": "Basic hand protection."
+    },
+    {
+      "id": "002_CommonBoots",
+      "name": "Common Boots",
+      "type": "accessory",
+      "defense": 0.01,
+      "description": "Basic foot protection."
+    },
+    {
+      "id": "003_LuckyCharm",
+      "name": "Lucky Charm",
+      "type": "accessory",
+      "statBonus": { "dex": 1 },
+      "description": "A small trinket that boosts luck."
+    },
+    {
+      "id": "001_HPPotion",
+      "name": "Health Potion",
+      "type": "consumable",
+      "effect": "heal_2d6",
+      "description": "Recovers 2d6 HP."
+    },
+    {
+      "id": "002_SkillPotion",
+      "name": "Skill Potion",
+      "type": "consumable",
+      "effect": "restore_skill",
+      "description": "Recovers 1d4 Skill Slots."
+    },
+    {
+      "id": "003_Lockpick",
+      "name": "Lockpick",
+      "type": "consumable",
+      "effect": "unlock",
+      "description": "Can be used on locked doors or chests."
+    },
+    {
+      "id": "004_PhoenixPotion",
+      "name": "Phoenix Potion",
+      "type": "consumable",
+      "effect": "revive",
+      "description": "Revives a downed character to full HP."
+    },
+    {
+      "id": "005_Tent",
+      "name": "Tent",
+      "type": "consumable",
+      "effect": "full_rest",
+      "description": "Fully restores party HP and Skill Points."
+    }
+  ]

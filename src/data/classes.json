@@ -1,0 +1,58 @@
+[
+    {
+      "id": "rogue",
+      "name": "Rogue",
+      "stats": {
+        "str": 10,
+        "con": 8,
+        "dex": 20,
+        "wis": 10,
+        "hitChance": 85,
+        "skillSlots": 3
+      },
+      "startingEquipment": ["001_DualKnife", "001_CommonClothes", "003_LuckyCharm"],
+      "startingItems": ["001_HPPotion", "003_Lockpick"]
+    },
+    {
+      "id": "fighter",
+      "name": "Fighter",
+      "stats": {
+        "str": 14,
+        "con": 14,
+        "dex": 5,
+        "wis": 10,
+        "hitChance": 85,
+        "skillSlots": 5
+      },
+      "startingEquipment": ["002_Longsword", "001_CommonClothes"],
+      "startingItems": ["001_HPPotion"]
+    },
+    {
+      "id": "wizard",
+      "name": "Wizard",
+      "stats": {
+        "str": 6,
+        "con": 10,
+        "dex": 5,
+        "wis": 14,
+        "hitChance": 80,
+        "skillSlots": 7
+      },
+      "startingEquipment": ["003_StandardStaff", "001_CommonClothes"],
+      "startingItems": ["001_HPPotion", "002_SkillPotion"]
+    },
+    {
+      "id": "cleric",
+      "name": "Cleric",
+      "stats": {
+        "str": 12,
+        "con": 25,
+        "dex": 5,
+        "wis": 14,
+        "hitChance": 80,
+        "skillSlots": 7
+      },
+      "startingEquipment": ["003_StandardStaff", "001_CommonClothes", "001_CommonGloves"],
+      "startingItems": ["001_HPPotion", "002_SkillPotion", "004_PhoenixPotion", "005_Tent"]
+    }
+  ]
