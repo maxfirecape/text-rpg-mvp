@@ -1,84 +1,134 @@
 import { create } from 'zustand';
-import type { Player, Item, Enemy } from '../types'; // Note: import type!
+import type { Character, Room, Item, Enemy } from '../types';
 
 interface GameState {
-  player: Player | null;
+  // PARTY STATE
+  party: Character[];
+  inventory: string[]; 
+  credits: number;
+  
+  // WORLD STATE
   currentRoomId: string;
   log: string[];
   
   // COMBAT STATE
   isCombat: boolean;
-  activeEnemy: Enemy | null;
+  activeEnemies: Enemy[];
+  
+  // GAME FLOW
+  isInputLocked: boolean; 
   
   // ACTIONS
-  initializePlayer: (p: Player) => void;
-  setRoom: (roomId: string) => void;
   addLog: (message: string) => void;
+  setRoom: (roomId: string) => void;
+  
+  // PARTY MANAGEMENT
+  addCharacter: (char: Character) => void;
+  updateCharacter: (id: string, updates: Partial<Character>) => void;
+  addToInventory: (itemId: string) => void;
   
   // COMBAT ACTIONS
-  startCombat: (enemy: Enemy) => void;
-  attackEnemy: () => void;
+  startCombat: (enemies: Enemy[]) => void;
+  dealDamageToEnemy: (enemyIndex: number, amount: number) => void;
+  dealDamageToParty: (charIndex: number, amount: number) => void;
+  
+  // ENEMY AI
   enemyTurn: () => void;
 }
 
 export const useGameStore = create<GameState>()((set, get) => ({
-  player: null,
+  party: [],
+  inventory: [],
+  credits: 0,
+  
   currentRoomId: 'room_01_cell',
-  log: ["System initialized...", "Welcome, Player."], 
+  log: ["System initialized...", "Welcome to Project Inertia."], 
+  
   isCombat: false,
-  activeEnemy: null,
+  activeEnemies: [],
+  isInputLocked: false,
 
-  initializePlayer: (p) => set({ player: p }),
-  setRoom: (roomId) => set({ currentRoomId: roomId }),
+  // --- BASIC ACTIONS ---
   addLog: (msg) => set((state) => ({ log: [...state.log, msg] })),
+  setRoom: (roomId) => set({ currentRoomId: roomId }),
 
-  // 1. START THE FIGHT
-  startCombat: (enemy) => set({ 
+  // --- PARTY ACTIONS ---
+  addCharacter: (char) => set((state) => ({ party: [...state.party, char] })),
+
+  updateCharacter: (id, updates) => set((state) => ({
+    party: state.party.map(c => c.id === id ? { ...c, ...updates } : c)
+  })),
+
+  addToInventory: (item) => set((state) => ({ 
+    inventory: [...state.inventory, item] 
+  })),
+
+  // --- COMBAT ACTIONS ---
+  startCombat: (enemies) => set((state) => ({ 
     isCombat: true, 
-    activeEnemy: enemy,
-    log: [...get().log, `WARNING: COMBAT STARTED. [${enemy.name}] engages!`]
+    activeEnemies: enemies,
+    log: [...state.log, `WARNING: COMBAT STARTED. ${enemies.length} hostiles detected.`]
+  })),
+
+  dealDamageToEnemy: (index, amount) => {
+    set((state) => {
+      const enemies = [...state.activeEnemies];
+      if (!enemies[index]) return {}; 
+
+      enemies[index].hp = Math.max(0, enemies[index].hp - amount);
+
+      // Check Victory condition
+      if (enemies.every(e => e.hp <= 0)) {
+        return { 
+          activeEnemies: [], 
+          isCombat: false, 
+          log: [...state.log, `VICTORY. All targets eliminated.`] 
+        };
+      }
+      
+      // LOGIC UPGRADE: If enemies are alive, queue their turn automatically
+      setTimeout(() => {
+        get().enemyTurn();
+      }, 1000); // 1 second delay for pacing
+
+      return { activeEnemies: enemies };
+    });
+  },
+
+  dealDamageToParty: (index, amount) => set((state) => {
+    const party = [...state.party];
+    if (!party[index]) return {};
+    party[index].hp = Math.max(0, party[index].hp - amount);
+    return { party };
   }),
 
-  // 2. PLAYER ATTACK LOGIC
-  attackEnemy: () => set((state) => {
-    if (!state.activeEnemy || !state.player) return {};
-
-    // Calculate Damage: (STR / 2) + d6 (Simulated)
-    const baseDmg = Math.floor(state.player.stats.str / 2);
-    const rng = Math.floor(Math.random() * 6) + 1;
-    const totalDmg = baseDmg + rng;
-
-    const newEnemyHp = Math.max(0, state.activeEnemy.hp - totalDmg);
-    
-    // Log the hit
-    const hitLog = `> You hit ${state.activeEnemy.name} for ${totalDmg} DMG!`;
-    const newLog = [...state.log, hitLog];
-
-    // Check Death
-    if (newEnemyHp <= 0) {
-      return {
-        activeEnemy: null,
-        isCombat: false,
-        log: [...newLog, `VICTORY: ${state.activeEnemy.messages.death}`, `+${state.activeEnemy.xpReward} XP`]
-      };
-    }
-
-    return {
-      activeEnemy: { ...state.activeEnemy, hp: newEnemyHp },
-      log: newLog
-    };
-  }),
-
-  // 3. ENEMY TURN (Simplified for MVP)
+  // --- ENEMY AI LOGIC ---
   enemyTurn: () => set((state) => {
-    if (!state.activeEnemy || !state.player) return {};
+    if (!state.isCombat || state.activeEnemies.length === 0) return {};
     
-    const dmg = Math.floor(Math.random() * 4) + 1; // 1d4 damage
-    const newPlayerHp = Math.max(0, state.player.hp - dmg);
-    
-    return {
-      player: { ...state.player, hp: newPlayerHp },
-      log: [...state.log, `> ${state.activeEnemy.name} hits you for ${dmg} damage!`]
-    };
+    const newLog = [...state.log];
+    const newParty = [...state.party];
+
+    // Each living enemy attacks a random living party member
+    state.activeEnemies.forEach(enemy => {
+      if (enemy.hp <= 0) return; // Dead enemies don't attack
+
+      // Find living targets
+      const livingTargets = newParty.filter(c => c.hp > 0);
+      if (livingTargets.length === 0) return;
+
+      // Pick Random Target
+      const targetIndex = Math.floor(Math.random() * livingTargets.length);
+      const target = livingTargets[targetIndex];
+      const realIndex = newParty.findIndex(c => c.id === target.id);
+
+      // Roll Damage (1d4 + STR bonus simulated)
+      const dmg = Math.floor(Math.random() * 4) + 1 + Math.floor(enemy.stats.str / 2);
+      
+      newParty[realIndex].hp = Math.max(0, newParty[realIndex].hp - dmg);
+      newLog.push(`> ${enemy.name} attacks ${target.name} for ${dmg} DMG!`);
+    });
+
+    return { party: newParty, log: newLog };
   })
 }));
