@@ -5,8 +5,35 @@
     "type": "weapon",
     "damage": "2d4",
     "statBonus": { "str": 0 },
-    "description": "Standard rogue weapons.",
-    "aliases": ["daggers", "knives", "dual blades"]
+    "description": "Standard rogue weapons. Fast and sharp.",
+    "aliases": ["daggers", "knives", "dual blades", "001_DualKnife"]
+  },
+  {
+    "id": "dual_cleavers",
+    "name": "Dual Cleavers",
+    "type": "weapon",
+    "damage": "3d4",
+    "statBonus": { "str": 0 },
+    "description": "Heavier chopping blades for a brutal rogue.",
+    "aliases": ["cleavers", "001a_DualCleavers"]
+  },
+  {
+    "id": "rapier",
+    "name": "Rapier",
+    "type": "weapon",
+    "damage": "2d4",
+    "statBonus": { "dex": 1 },
+    "description": "A slender blade that improves agility.",
+    "aliases": ["001b_Rapier"]
+  },
+  {
+    "id": "poison_rapier",
+    "name": "Poison Rapier",
+    "type": "weapon",
+    "damage": "2d4",
+    "statBonus": { "dex": 1 },
+    "description": "A rapier dripping with venom. 20% chance to poison.",
+    "aliases": ["001c_PoisonRapier"]
   },
   {
     "id": "longsword",
@@ -14,8 +41,17 @@
     "type": "weapon",
     "damage": "2d6",
     "statBonus": { "str": 0 },
-    "description": "A heavy blade for fighters.",
-    "aliases": ["sword", "blade"]
+    "description": "A heavy blade for fighters. Reliable and strong.",
+    "aliases": ["sword", "blade", "002_Longsword"]
+  },
+  {
+    "id": "claymore",
+    "name": "Claymore",
+    "type": "weapon",
+    "damage": "3d6",
+    "statBonus": { "str": 0 },
+    "description": "A massive two-handed sword. Devastating damage.",
+    "aliases": ["greatsword", "002a_Claymore"]
   },
   {
     "id": "staff",
@@ -23,32 +59,75 @@
     "type": "weapon",
     "damage": "STR*0.66",
     "statBonus": { "wis": 2 },
-    "description": "Basic magical focus.",
-    "aliases": ["wand", "stick"]
+    "description": "Basic magical focus. Adds slight wisdom.",
+    "aliases": ["wand", "stick", "003_StandardStaff"]
+  },
+  {
+    "id": "silver_staff",
+    "name": "Silver Staff",
+    "type": "weapon",
+    "damage": "STR*0.66",
+    "statBonus": { "wis": 4 },
+    "description": "A staff inlaid with silver. Amplifies magic significantly.",
+    "aliases": ["003a_SilverStaff"]
+  },
+  {
+    "id": "holy_sword",
+    "name": "Holy Sword",
+    "type": "weapon",
+    "damage": "2d6",
+    "statBonus": { "wis": 2 },
+    "description": "A blessed blade used by Holy Knights.",
+    "aliases": ["004_HolySword"]
   },
   {
     "id": "clothes",
     "name": "Common Clothes",
     "type": "armor",
-    "defense": 0.05,
-    "description": "Simple rags. Reduces damage by 5%.",
-    "aliases": ["rags", "shirt", "tunic"]
+    "defense": { "min": 0.05, "max": 0.08 },
+    "description": "Simple rags. Reduces damage by 5-8%.",
+    "aliases": ["rags", "shirt", "tunic", "001_CommonClothes"]
+  },
+  {
+    "id": "leather_clothes",
+    "name": "Leather Clothes",
+    "type": "armor",
+    "defense": { "min": 0.07, "max": 0.10 },
+    "description": "Toughened leather. Reduces damage by 7-10%.",
+    "aliases": ["leather", "002_LeatherClothes"]
+  },
+  {
+    "id": "chainmail",
+    "name": "Standard Chainmail",
+    "type": "armor",
+    "defense": { "min": 0.10, "max": 0.12 },
+    "description": "Interlocking metal rings. Reduces damage by 10-12%.",
+    "aliases": ["chain", "mail", "003_StandardChainmail"]
+  },
+  {
+    "id": "light_chainmail",
+    "name": "Light Chainmail",
+    "type": "armor",
+    "defense": { "min": 0.09, "max": 0.11 },
+    "statBonus": { "dex": 1 },
+    "description": "Lightweight chainmail. Reduces damage by 9-11% and boosts DEX.",
+    "aliases": ["light chain", "004_LightChainmail"]
   },
   {
     "id": "gloves",
     "name": "Common Gloves",
     "type": "accessory",
-    "defense": 0.01,
-    "description": "Basic hand protection.",
-    "aliases": ["hands", "glove"]
+    "defense": { "min": 0.01, "max": 0.02 },
+    "description": "Basic hand protection. Reduces damage by 1-2%.",
+    "aliases": ["hands", "glove", "001_CommonGloves"]
   },
   {
     "id": "boots",
     "name": "Common Boots",
     "type": "accessory",
-    "defense": 0.01,
-    "description": "Basic foot protection.",
-    "aliases": ["shoes", "feet"]
+    "defense": { "min": 0.01, "max": 0.02 },
+    "description": "Basic foot protection. Reduces damage by 1-2%.",
+    "aliases": ["shoes", "feet", "002_CommonBoots"]
   },
   {
     "id": "lucky_charm",
@@ -56,7 +135,7 @@
     "type": "accessory",
     "statBonus": { "dex": 1 },
     "description": "A small trinket that boosts luck.",
-    "aliases": ["charm", "trinket", "coin"]
+    "aliases": ["charm", "trinket", "coin", "003_LuckyCharm"]
   },
   {
     "id": "hp_potion",
@@ -64,7 +143,7 @@
     "type": "consumable",
     "effect": "heal_2d6",
     "description": "Recovers 2d6 HP.",
-    "aliases": ["hp pot", "health pot", "red potion", "potion"]
+    "aliases": ["hp pot", "health pot", "red potion", "potion", "001_HPPotion"]
   },
   {
     "id": "skill_potion",
@@ -72,7 +151,7 @@
     "type": "consumable",
     "effect": "restore_skill",
     "description": "Recovers 1d4 Skill Slots.",
-    "aliases": ["sp pot", "skill pot", "blue potion", "mana"]
+    "aliases": ["sp pot", "skill pot", "blue potion", "mana", "002_SkillPotion"]
   },
   {
     "id": "lockpick",
@@ -80,7 +159,7 @@
     "type": "consumable",
     "effect": "unlock",
     "description": "Can be used on locked doors or chests.",
-    "aliases": ["pick", "key", "tool"]
+    "aliases": ["pick", "key", "tool", "003_Lockpick"]
   },
   {
     "id": "phoenix_potion",
@@ -88,7 +167,7 @@
     "type": "consumable",
     "effect": "revive",
     "description": "Revives a downed character to full HP.",
-    "aliases": ["revive", "phoenix down", "feather"]
+    "aliases": ["revive", "phoenix down", "feather", "004_PhoenixPotion"]
   },
   {
     "id": "tent",
@@ -96,6 +175,6 @@
     "type": "consumable",
     "effect": "full_rest",
     "description": "Fully restores party HP and Skill Points.",
-    "aliases": ["camp", "rest"]
+    "aliases": ["camp", "rest", "005_Tent"]
   }
 ]

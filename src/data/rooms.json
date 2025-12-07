@@ -1,26 +1,30 @@
 [
   {
     "id": "room_01_cell",
-    "name": "Cell Block",
-    "description": "You are in a small room, behind a locked cell, in a dimly-lit stone building. Torches are lit on the wall. A disgruntled prisoner glares at three guards.",
+    "name": "Dingy Cell Block, Colosseum Auxiliary Building",
+    "description": "Three heroes are locked in a cell with cobblestone floors and dimly lit torch lights.",
+    "image": "https://placehold.co/600x400/1a1a2e/FFF?text=Cell+Block",
     "exits": {
       "west": "room_02_corridor"
     },
     "interactables": {
-      "door": { "locked": true, "keyId": "003_Lockpick", "message": "The door is locked tight." },
-      "bed": { "message": "A concrete slab with rags." },
-      "prisoner": { "type": "npc", "name": "Purple-Haired Prisoner" }
+      "door": { "locked": false, "message": "It's the cell door. Looks sturdy." },
+      "prisoner": { "type": "npc", "name": "Rex", "message": "He is staring at you, smirking." },
+      "desk": { "message": "A typical desk. Nothing seems remarkable about it." },
+      "bed": { "message": "These were not comfortable to sleep in last night." },
+      "toilet": { "message": "It’s excruciatingly cold, and uncomfortable to share with your cellmates." }
     }
   },
   {
     "id": "room_02_corridor",
     "name": "Prison Corridor",
-    "description": "A long stone hallway. To the South is the exit.",
+    "description": "You step over the bodies of the guards and into the prison block hallway. The prisoner across the room is beaming.",
+    "image": "https://placehold.co/600x400/2e1a1a/FFF?text=Prison+Corridor",
     "exits": {
       "east": "room_01_cell"
     },
     "interactables": {
-      "chest": { "locked": true, "keyId": "003_Lockpick", "loot": "005_Tent" }
+      "chest": { "locked": false, "loot": "lucky_charm", "message": "A wooden chest sits in the corner." }
     }
   }
 ]

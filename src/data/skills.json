@@ -1,0 +1,218 @@
+[
+  {
+    "id": "steal",
+    "name": "Steal",
+    "cost": 1,
+    "effect": "steal_item",
+    "description": "Takes one item from the enemy loot.",
+    "aliases": ["rob", "pickpocket", "thieve", "001_Steal"],
+    "classes": ["rogue"]
+  },
+  {
+    "id": "precision_strike",
+    "name": "Precision Strike",
+    "cost": 1,
+    "effect": "damage_high",
+    "description": "This attack always hits. Deals weapon damage + 2d4.",
+    "aliases": ["pr", "precision", "002_PrecisionStrike"],
+    "classes": ["rogue"]
+  },
+  {
+    "id": "ghost_step",
+    "name": "Ghost Step",
+    "cost": 1,
+    "effect": "buff_dex_2x",
+    "description": "Doubles DEX for 60 seconds.",
+    "aliases": ["gs", "ghost", "003_GhostStep"],
+    "classes": ["rogue"]
+  },
+  {
+    "id": "skeleton_key",
+    "name": "Skeleton Key",
+    "cost": 1,
+    "effect": "unlock_door",
+    "description": "Acts as a lockpick for 1 skill point.",
+    "aliases": ["sk", "key", "004_SkeletonKey"],
+    "classes": ["rogue"]
+  },
+  {
+    "id": "double_strike",
+    "name": "Double Strike",
+    "cost": 1,
+    "effect": "damage_2x",
+    "description": "Does double total weapon damage.",
+    "aliases": ["ds", "double", "005_DoubleStrike"],
+    "classes": ["rogue"]
+  },
+  {
+    "id": "poison_blade",
+    "name": "Poison Tipped Blade",
+    "cost": 1,
+    "effect": "status_poison",
+    "description": "Coats weapon in poison.",
+    "aliases": ["ptb", "poison", "006_PoisonTippedBlade"],
+    "classes": ["rogue"]
+  },
+  {
+    "id": "disable",
+    "name": "Disable",
+    "cost": 1,
+    "effect": "status_disable",
+    "description": "Disables enemy movement for 20 seconds.",
+    "aliases": ["dis", "stop", "008_Disable"],
+    "classes": ["rogue"]
+  },
+  {
+    "id": "trick_coin",
+    "name": "Trick Coin",
+    "cost": 1,
+    "effect": "distract",
+    "description": "Distracts enemy for 1 turn. Sets gold to max for 10s (Visual).",
+    "aliases": ["tc", "coin", "011_TrickCoin"],
+    "classes": ["rogue"]
+  },
+  {
+    "id": "heavy_strike",
+    "name": "Heavy Strike",
+    "cost": 1,
+    "effect": "damage_2.5x",
+    "description": "Does 2.5x total weapon damage.",
+    "aliases": ["hs", "heavy", "101_HeavyStrike"],
+    "classes": ["fighter"]
+  },
+  {
+    "id": "brutal_strike",
+    "name": "Brutal Strike",
+    "cost": 2,
+    "effect": "damage_3.5x",
+    "description": "Does 3.5x total weapon damage.",
+    "aliases": ["bs", "brutal", "102_BrutalStrike"],
+    "classes": ["fighter"]
+  },
+  {
+    "id": "berzerk",
+    "name": "Berzerk",
+    "cost": 1,
+    "effect": "buff_dmg_1.5x",
+    "description": "Weapon damage x1.5 for 30 seconds.",
+    "aliases": ["bzk", "rage", "103_Berzerk"],
+    "classes": ["fighter"]
+  },
+  {
+    "id": "evade_up",
+    "name": "Evade Up",
+    "cost": 1,
+    "effect": "buff_dex_20s",
+    "description": "Doubles DEX for 20 seconds.",
+    "aliases": ["eu", "evade", "104_EvadeUp"],
+    "classes": ["fighter"]
+  },
+  {
+    "id": "armor_up",
+    "name": "Armor Up",
+    "cost": 1,
+    "effect": "buff_def_10",
+    "description": "Adds 10% armor for 45 seconds.",
+    "aliases": ["au", "armor", "105_ArmorUp"],
+    "classes": ["fighter"]
+  },
+  {
+    "id": "fire",
+    "name": "Fire",
+    "cost": 1,
+    "effect": "damage_fire",
+    "description": "Does 2d6 damage. 50% chance to burn.",
+    "aliases": ["fireball", "burn", "f", "201_Fire"],
+    "classes": ["wizard"]
+  },
+  {
+    "id": "freeze",
+    "name": "Freeze",
+    "cost": 1,
+    "effect": "damage_ice",
+    "description": "Does 2d6 damage. 50% chance to freeze.",
+    "aliases": ["ice", "frost", "fr", "202_Freeze"],
+    "classes": ["wizard"]
+  },
+  {
+    "id": "shock",
+    "name": "Shock",
+    "cost": 1,
+    "effect": "damage_shock",
+    "description": "Does 3d4 damage. 80% chance to stun.",
+    "aliases": ["bolt", "zap", "s", "203_Shock"],
+    "classes": ["wizard"]
+  },
+  {
+    "id": "flame_wall",
+    "name": "Flame Wall",
+    "cost": 2,
+    "effect": "damage_fire_aoe",
+    "description": "Does 1d10 to all enemies. 40% burn chance.",
+    "aliases": ["fw", "wall", "204_FlameWall"],
+    "classes": ["wizard"]
+  },
+  {
+    "id": "heal",
+    "name": "Heal",
+    "cost": 1,
+    "effect": "heal_wis",
+    "description": "Heals target for WIS amount.",
+    "aliases": ["cure", "light", "h", "301_Heal"],
+    "classes": ["cleric"]
+  },
+  {
+    "id": "healing_rain",
+    "name": "Healing Rain",
+    "cost": 1,
+    "effect": "heal_hot_aoe",
+    "description": "Recovers (WIS*0.5) over 10s for party.",
+    "aliases": ["hr", "rain", "302_HealingRain"],
+    "classes": ["cleric"]
+  },
+  {
+    "id": "revive",
+    "name": "Revive",
+    "cost": 1,
+    "effect": "revive_wis",
+    "description": "Revives target with WIS health.",
+    "aliases": ["life", "raise", "res", "303_Revive"],
+    "classes": ["cleric"]
+  },
+  {
+    "id": "greater_revive",
+    "name": "Greater Revive",
+    "cost": 2,
+    "effect": "revive_half",
+    "description": "Revives target with 50% HP + 2d4.",
+    "aliases": ["gr", "grevive", "304_GreaterRevive"],
+    "classes": ["cleric"]
+  },
+  {
+    "id": "max_revive",
+    "name": "Max Revive",
+    "cost": 3,
+    "effect": "revive_full",
+    "description": "Revives target with 100% HP.",
+    "aliases": ["mr", "maxlife", "305_MaxRevive"],
+    "classes": ["cleric"]
+  },
+  {
+    "id": "greater_heal",
+    "name": "Greater Heal",
+    "cost": 2,
+    "effect": "heal_wis_2x",
+    "description": "Heals target for WIS * 2.",
+    "aliases": ["gh", "gheal", "306_GreaterHeal"],
+    "classes": ["cleric"]
+  },
+  {
+    "id": "group_rain",
+    "name": "Group Rain",
+    "cost": 2,
+    "effect": "heal_hot_strong_aoe",
+    "description": "Heals party by WIS*1.25 over 10s.",
+    "aliases": ["grouprain", "bigrain", "307_GroupRain"],
+    "classes": ["cleric"]
+  }
+]

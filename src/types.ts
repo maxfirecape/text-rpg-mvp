@@ -8,24 +8,25 @@ export type Stats = {
   skillSlots: number;
 };
 
-// 2. ITEMS
+// 2. ITEMS (Updated Defense to be a Range)
 export type Item = {
   id: string;
   name: string;
   type: 'weapon' | 'armor' | 'accessory' | 'consumable' | 'key';
   description: string;
   damage?: string;
-  defense?: number;
+  defense?: { min: number; max: number }; // FIXED: Now supports 5%-8% ranges
   statBonus?: Partial<Stats>;
   effect?: string;
-  aliases?: string[]; // For natural language (e.g. "hp pot")
+  aliases?: string[];
+  classes?: string[]; // Added to match skills.json structure
 };
 
-// 3. CHARACTERS (Scalable Party Members)
+// ... (Keep Character, Enemy, and Room definitions the same)
 export type Character = {
-  id: string;          // Unique Instance ID (e.g., "hero_1", "npc_rex")
-  name: string;        // Display Name (e.g., "Jin-Woo", "Rex")
-  classId: string;     // Refers to classes.json
+  id: string;
+  name: string;
+  classId: string;
   hp: number;
   maxHp: number;
   mp: number;
@@ -36,10 +37,10 @@ export type Character = {
     armor: string | null;
     accessories: string[];
   };
-  isPlayerControlled: boolean; // TRUE for created heroes, FALSE for recruited NPCs
+  isPlayerControlled: boolean;
+  status: string[];
 };
 
-// 4. ENEMIES
 export type Enemy = {
   id: string;
   name: string;
@@ -51,17 +52,19 @@ export type Enemy = {
   };
   xpReward: number;
   loot: string[];
+  description?: string;
   messages: {
     lowHealth: string;
     death: string;
   };
+  status: string[];
 };
 
-// 5. ROOMS
 export type Room = {
   id: string;
   name: string;
   description: string;
+  image?: string;
   exits: Record<string, string>;
   interactables?: Record<string, any>;
 };
