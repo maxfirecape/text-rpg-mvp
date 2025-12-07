@@ -8,25 +8,34 @@ export type Stats = {
   skillSlots: number;
 };
 
-// 2. ITEMS (Updated Defense to be a Range)
+// 2. ITEMS
 export type Item = {
   id: string;
   name: string;
   type: 'weapon' | 'armor' | 'accessory' | 'consumable' | 'key';
   description: string;
   damage?: string;
-  defense?: { min: number; max: number }; // FIXED: Now supports 5%-8% ranges
+  defense?: { min: number; max: number };
   statBonus?: Partial<Stats>;
   effect?: string;
   aliases?: string[];
-  classes?: string[]; // Added to match skills.json structure
+  classes?: string[];
 };
 
-// ... (Keep Character, Enemy, and Room definitions the same)
+// 3. CHARACTERS
+export type StatusEffect = {
+  type: string;    // "poison", "stun", "buff_dex"
+  duration: number; // Turns remaining
+  val?: number;    // Amount (e.g. poison damage)
+};
+
 export type Character = {
   id: string;
   name: string;
   classId: string;
+  level: number;
+  xp: number;
+  maxXp: number;
   hp: number;
   maxHp: number;
   mp: number;
@@ -35,31 +44,28 @@ export type Character = {
   equipment: {
     weapon: string | null;
     armor: string | null;
-    accessories: string[];
+    accessories: string[]; // Up to 3
   };
   isPlayerControlled: boolean;
-  status: string[];
+  status: StatusEffect[];
+  unlockedSkills: string[]; // List of skill IDs
 };
 
+// 4. ENEMIES
 export type Enemy = {
   id: string;
   name: string;
   hp: number;
   maxHp: number;
-  stats: {
-    str: number;
-    dex: number;
-  };
+  stats: { str: number; dex: number };
   xpReward: number;
   loot: string[];
   description?: string;
-  messages: {
-    lowHealth: string;
-    death: string;
-  };
-  status: string[];
+  messages: { lowHealth: string; death: string };
+  status: StatusEffect[];
 };
 
+// 5. ROOMS
 export type Room = {
   id: string;
   name: string;

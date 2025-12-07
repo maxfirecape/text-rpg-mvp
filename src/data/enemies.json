@@ -10,10 +10,11 @@
     },
     "xpReward": 40,
     "loot": ["lucky_charm"],
-    "description": "A guard.",
+    "description": "Super de duper guard",
     "messages": {
       "lowHealth": "The Guard grunts and moans.",
       "death": "The Guard has fallen!"
-    }
+    },
+    "status": []
   }
 ]
