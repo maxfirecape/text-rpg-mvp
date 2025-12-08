@@ -244,13 +244,20 @@ const cmdOpen = (args: string, store: any) => {
   }
 };
 
-const cmdHelp = (store: any) => {
-  store.addLog("=== COMMANDS ===");
-  store.addLog("EXPLORE: look (l), north (n), south (s), open [obj]");
-  store.addLog("INSPECT: examine (x) [obj], check [obj]");
-  store.addLog("SELF: inventory (i), stats [name], skills [name]");
-  store.addLog("GEAR: equip [item] on [name], remove [slot] on [name]");
-  store.addLog("COMBAT: attack (a) [target], cast (c) [spell] on [target]");
+const cmdHelp = (args: string, store: any) => {
+  if (args) {
+    // Specific Help (e.g. "help frz")
+    const skill = skillsData.find(s => s.id === args || s.aliases?.includes(args));
+    if (skill) {
+      store.addLog(`--- SPELL: ${skill.name} ---`);
+      store.addLog(`Aliases: ${skill.aliases?.join(', ').toUpperCase()}`);
+      store.addLog(`Cost: ${skill.cost} SP`);
+      store.addLog(`Effect: ${skill.description}`);
+      return;
+    }
+  }
+  store.addLog("COMMANDS: look, i, stats, equip [item], attack [target], cast [spell] [target]");
+  store.addLog("Type 'help [spell]' for details (e.g. 'help frz').");
 };
 
 // --- MAIN PARSER ---
