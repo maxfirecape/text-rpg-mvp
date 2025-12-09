@@ -3,10 +3,6 @@ import { useGameStore } from './store/gameStore';
 import { processCommand } from './engine/parser'; 
 import roomsData from './data/rooms.json';
 
-// --- AUDIO CONFIGURATION ---
-// 1. Download your "Sick Bass" tracks.
-// 2. Name them 'battle.mp3' and 'dungeon.mp3'.
-// 3. Drag them into the 'public' folder in your file explorer.
 const AUDIO_COMBAT = "/battle.mp3"; 
 const AUDIO_AMBIANCE = "/dungeon.mp3";
 
@@ -18,7 +14,7 @@ function App() {
   const inventory = useGameStore(state => state.inventory);
   const credits = useGameStore(state => state.credits);
   const currentRoomId = useGameStore(state => state.currentRoomId);
-  const actedInTurn = useGameStore(state => state.actedInTurn);
+  const tick = useGameStore(state => state.tick);
   
   const [input, setInput] = useState("");
   const [isMuted, setIsMuted] = useState(false);
@@ -27,41 +23,27 @@ function App() {
 
   const currentRoom = roomsData.find(r => r.id === currentRoomId);
 
-  // DETERMINE ACTIVE HERO
-  const activeHero = isCombat 
-    ? party.find(c => c.hp > 0 && !actedInTurn.includes(c.id))
-    : party[0]; 
+  // GAME LOOP (ATB TICK)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      tick(1); 
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [tick]);
 
-  // Auto-scroll Log
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [log]);
 
-  // Audio System
   useEffect(() => {
     const audio = audioRef.current;
-    audio.volume = 0.4; // 40% Volume
-    
-    if (isMuted) { 
-      audio.pause(); 
-      return; 
-    }
-
+    audio.volume = 0.4;
+    if (isMuted) { audio.pause(); return; }
     const track = isCombat ? AUDIO_COMBAT : AUDIO_AMBIANCE;
-    
-    // Switch tracks seamlessly
     if (!audio.src.includes(track)) {
-      audio.src = track;
-      audio.loop = true;
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.log("Audio waiting for user interaction.");
-        });
-      }
-    } else if (audio.paused) {
+      audio.src = track; audio.loop = true; 
       audio.play().catch(() => {});
-    }
+    } else if (audio.paused) audio.play().catch(() => {});
   }, [isCombat, isMuted]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -81,10 +63,10 @@ function App() {
         <div style={{ width: '100%', height: '10px', background: '#330000', border: '1px solid red' }}>
           <div style={{ width: `${(enemy.hp / enemy.maxHp) * 100}%`, height: '100%', background: 'red', transition: 'width 0.2s' }}></div>
         </div>
-        {/* Enemy Status */}
-        <div style={{ display: 'flex', gap: '5px' }}>
+        <div style={{ display: 'flex', gap: '5px', marginTop:'2px' }}>
+          {enemy.state === 'charging' && <span style={{ color:'yellow', fontSize:'0.7rem' }}>⚠ CHARGING</span>}
           {enemy.status.map((s, i) => (
-            <span key={i} style={{ fontSize: '0.7rem', color: 'orange', textTransform: 'uppercase' }}>[{s.type}]</span>
+            <span key={i} style={{ fontSize: '0.7rem', color: 'orange' }}>[{s.type}]</span>
           ))}
         </div>
       </div>
@@ -93,137 +75,56 @@ function App() {
 
   return (
     <div className="game-grid">
-      
-      {/* 1. STATUS PANEL */}
-      <div className="sys-panel" style={{ gridArea: 'status', display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ color: 'var(--sys-cyan)', margin: 0, fontSize: '1.2rem' }}>PARTY</h2>
-          <span style={{ color: '#ffd700', fontSize: '0.9rem' }}>$ {credits}</span>
+      <div className="sys-panel" style={{ gridArea: 'status', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+           <h2 style={{ color: 'var(--sys-cyan)', margin: 0 }}>PARTY</h2>
+           <span style={{ color:'#ffd700' }}>${credits}</span>
         </div>
-        <div style={{ borderBottom: '1px solid var(--sys-cyan)', opacity: 0.5 }}></div>
-        
-        {party.length === 0 ? <p style={{color:'#666', fontSize:'0.8rem'}}>Awaiting Neural Link...</p> : party.map((char) => {
-          const isActive = isCombat && char.id === activeHero?.id;
-          return (
-            <div key={char.id} style={{ 
-              background: isActive ? 'rgba(0, 255, 200, 0.05)' : 'rgba(0,0,0,0.3)', 
-              padding: '8px', 
-              borderRadius: '4px', 
-              borderLeft: isActive ? '4px solid #00ff00' : '2px solid var(--sys-cyan)',
-              border: isActive ? '1px solid #00ff00' : 'none',
-              transition: 'all 0.3s'
-            }}>
-              <div style={{ display:'flex', justifyContent:'space-between', fontWeight: 'bold', fontSize: '0.9rem', color: isActive ? '#00ff00' : 'white' }}>
-                <span>{char.name}</span>
-                <span style={{fontSize: '0.7rem', color:'#aaa'}}>LVL {char.level} {char.classId.toUpperCase()}</span>
-              </div>
-              
-              {/* XP BAR */}
-              <div style={{ width: '100%', height: '3px', background: '#333', marginTop: '4px', marginBottom: '4px' }}>
-                 <div style={{ width: `${(char.xp / char.maxXp)*100}%`, height: '100%', background: '#ffd700' }}></div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                <span style={{ color: '#ff5555' }}>HP {char.hp}/{char.maxHp}</span>
-                <span style={{ color: '#5555ff' }}>SP {char.mp}/{char.maxMp}</span>
-              </div>
-
-              {/* ACTIVE STATUS EFFECTS */}
-              {char.status.length > 0 && (
-                <div style={{ marginTop: '4px', display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                  {char.status.map((s, idx) => (
-                    <span key={idx} style={{ 
-                      background: '#330000', color: '#ff4444', fontSize: '0.6rem', 
-                      padding: '1px 3px', borderRadius: '2px', border: '1px solid #ff4444' 
-                    }}>
-                      {s.type.toUpperCase()} ({s.duration})
-                    </span>
-                  ))}
-                </div>
-              )}
+        <div style={{ borderBottom: '1px solid var(--sys-cyan)', opacity: 0.5, marginBottom:'10px' }}></div>
+        {party.map(char => (
+          <div key={char.id} style={{ marginBottom: '10px', padding: '5px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px' }}>
+            <div style={{ fontWeight: 'bold' }}>{char.name} <span style={{fontSize:'0.8em', color:'#aaa'}}>{char.classId.toUpperCase()}</span></div>
+            <div style={{ fontSize:'0.9em' }}>HP: {char.hp}/{char.maxHp} | SP: {char.mp}/{char.maxMp}</div>
+            <div style={{ width: '100%', height: '3px', background: '#333', marginTop: '4px' }}>
+               <div style={{ width: `${(char.xp / char.maxXp)*100}%`, height: '100%', background: '#ffd700' }}></div>
             </div>
-          );
-        })}
+            {char.status.length > 0 && <div style={{fontSize:'0.7rem', color:'orange'}}>{char.status.map(s=>s.type).join(', ')}</div>}
+          </div>
+        ))}
       </div>
 
-      {/* 2. INVENTORY PANEL */}
       <div className="sys-panel" style={{ gridArea: 'info', overflowY: 'auto' }}>
-        <h3 style={{ color: 'var(--sys-cyan)', margin: 0, fontSize: '1rem' }}>EQUIPMENT & BAG</h3>
-        <div style={{ borderBottom: '1px solid var(--sys-cyan)', opacity: 0.5, marginBottom: '5px' }}></div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-          {inventory.length === 0 && <span style={{color:'#555', fontSize:'0.8rem'}}>Empty.</span>}
-          {inventory.map((item, i) => (
-            <span key={i} style={{ 
-              background: '#112233', padding: '2px 6px', borderRadius: '3px', 
-              fontSize: '0.8rem', border: '1px solid #334455', color: '#ccc' 
-            }}>
-              {item}
-            </span>
-          ))}
+        <h3 style={{ color: 'var(--sys-cyan)', margin: 0 }}>BAG</h3>
+        <div style={{ fontSize: '0.8em', color: '#ccc' }}>
+           {inventory.length === 0 ? "Empty" : "Use 'i' to count items"}
         </div>
       </div>
 
-      {/* 3. HEADER */}
-      <div className="sys-panel" style={{ gridArea: 'header', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '1.1rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'white', letterSpacing: '1px' }}>
-           {party.length < 3 ? "Project Inertia: Director's Cut" : currentRoom?.name || "Unknown Zone"}
-        </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <button onClick={() => setIsMuted(!isMuted)} style={{ 
-            background: isMuted ? '#330000' : 'transparent', 
-            border: '1px solid var(--sys-cyan)', 
-            color: isMuted ? '#ff5555' : 'var(--sys-cyan)', 
-            cursor: 'pointer', fontSize: '0.7rem', padding: '4px 10px', textTransform:'uppercase' 
-          }}>
-            {isMuted ? "AUDIO OFF" : "AUDIO ON"}
-          </button>
-          <span style={{ color: 'var(--sys-cyan)', fontFamily: 'monospace' }}>T: 00:00:00</span>
-        </div>
+      <div className="sys-panel" style={{ gridArea: 'header', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <span style={{ fontWeight:'bold' }}>{party.length < 3 ? "CHARACTER CREATION" : currentRoom?.name}</span>
+        <button onClick={() => setIsMuted(!isMuted)}>{isMuted ? "UNMUTE" : "MUTE"}</button>
       </div>
 
-      {/* 4. IMAGE VISUALIZER */}
-      <div className="sys-panel" style={{ gridArea: 'image', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#050505', position: 'relative', overflow: 'hidden' }}>
-        {!isCombat && currentRoom?.image && (
-          <img src={currentRoom.image} onError={(e) => { e.currentTarget.style.display = 'none'; }} alt="Vis" style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', opacity: 0.4, filter: 'grayscale(20%) sepia(20%)' }} />
-        )}
+      <div className="sys-panel" style={{ gridArea: 'image', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#000' }}>
         {isCombat && activeEnemies.length > 0 ? (
-           <div style={{ width: '85%', zIndex: 10, background: 'rgba(0,0,0,0.8)', padding: '15px', border: '1px solid red', boxShadow: '0 0 15px rgba(255,0,0,0.2)' }}>
-             <h2 style={{ color: '#ff0000', textShadow: '0 0 10px red', margin: '0 0 15px 0', textAlign: 'center', letterSpacing: '2px' }}>COMBAT ALERT</h2>
-             {renderEnemyBars()}
-           </div>
-        ) : (!currentRoom?.image && <span style={{ color: '#333', fontSize: '2rem', fontWeight:'bold' }}>NO SIGNAL</span>)}
+          <div style={{ width:'90%' }}>
+            <h2 style={{ color:'red', textAlign:'center' }}>COMBAT ALERT</h2>
+            {renderEnemyBars()}
+          </div>
+        ) : (!currentRoom?.image && <span style={{ color:'#555' }}>[VISUAL FEED OFFLINE]</span>)}
+        {!isCombat && currentRoom?.image && <img src={currentRoom.image} style={{position:'absolute', width:'100%', height:'100%', objectFit:'cover', opacity:0.4}} />}
       </div>
 
-      {/* 5. TEXT OUTPUT */}
-      <div className="sys-panel" style={{ gridArea: 'output', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '5px', scrollBehavior: 'smooth' }}>
-          {log.map((line, index) => (
-            <div key={index} style={{ 
-              marginBottom: '0.6rem', 
-              borderLeft: line.includes('>') ? 'none' : '2px solid var(--sys-cyan)', 
-              paddingLeft: line.includes('>') ? '0' : '10px', 
-              color: line.includes('>') ? '#aaa' : line.includes('COMBAT') ? '#ff5555' : 'white',
-              lineHeight: '1.5',
-              fontSize: '1rem'
-            }}>
-              {line}
-            </div>
-          ))}
-          <div ref={logEndRef} />
-        </div>
+      <div className="sys-panel" style={{ gridArea: 'output', overflowY: 'auto' }}>
+        {log.map((l, i) => (
+          <div key={i} style={{ marginBottom:'4px', paddingLeft:'5px', borderLeft:'2px solid cyan' }}>{l}</div>
+        ))}
+        <div ref={logEndRef} />
       </div>
 
-      {/* 6. INPUT */}
-      <form className="sys-panel" style={{ gridArea: 'input', display: 'flex', padding: '0.5rem', alignItems:'center' }} onSubmit={handleSubmit}>
-        <span style={{ padding: '0 1rem', fontSize: '1.2rem', color: 'var(--sys-cyan)' }}>{'>'}</span>
-        <input 
-          type="text" 
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={party.length < 3 ? "Initialize Hero..." : isCombat ? `[${activeHero?.name}]: Command...` : "Awaiting Input..."}
-          autoFocus
-          style={{ background: 'transparent', border: 'none', color: 'white', flex: 1, fontSize: '1.1rem', outline: 'none', fontFamily: 'monospace' }}
-        />
+      <form className="sys-panel" style={{ gridArea: 'input', display:'flex', alignItems:'center' }} onSubmit={handleSubmit}>
+        <span style={{ marginRight:'10px', color:'cyan' }}>&gt;</span>
+        <input autoFocus type="text" value={input} onChange={e => setInput(e.target.value)} style={{ background:'transparent', border:'none', color:'white', flex:1, fontSize:'1.1em' }} placeholder="Enter command..." />
       </form>
     </div>
   );

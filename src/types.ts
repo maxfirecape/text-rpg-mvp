@@ -22,11 +22,34 @@ export type Item = {
   classes?: string[];
 };
 
-// 3. CHARACTERS
+// 3. SKILLS
+export type Skill = {
+  id: string;
+  name: string;
+  cost: number;
+  type: string;
+  effect?: string; // Fixed: Added to support legacy checks
+  formula?: string;
+  val?: number;
+  stat?: string;
+  duration?: number;
+  chance?: number;
+  status?: string;
+  description: string;
+  aliases?: string[];
+  classes?: string[];
+  hitChanceBonus?: number;
+  bonusDamage?: string;
+  subType?: string;
+  target?: string;
+};
+
+// 4. CHARACTERS & STATUS
 export type StatusEffect = {
-  type: string;    // "poison", "stun", "buff_dex"
-  duration: number; // Turns remaining
-  val?: number;    // Amount (e.g. poison damage)
+  type: string;
+  duration: number;
+  val?: number;
+  stat?: string;
 };
 
 export type Character = {
@@ -44,14 +67,14 @@ export type Character = {
   equipment: {
     weapon: string | null;
     armor: string | null;
-    accessories: string[]; // Up to 3
+    accessories: string[];
   };
   isPlayerControlled: boolean;
   status: StatusEffect[];
-  unlockedSkills: string[]; // List of skill IDs
+  unlockedSkills: string[];
 };
 
-// 4. ENEMIES
+// 5. ENEMIES
 export type Enemy = {
   id: string;
   name: string;
@@ -63,14 +86,18 @@ export type Enemy = {
   description?: string;
   messages: { lowHealth: string; death: string };
   status: StatusEffect[];
+  // Fixed: Added ATB fields to prevent GameStore crash
+  atbTimer?: number;
+  state?: 'idle' | 'charging' | 'attacking';
 };
 
-// 5. ROOMS
+// 6. ROOMS
 export type Room = {
   id: string;
   name: string;
   description: string;
   image?: string;
-  exits: Record<string, string>;
-  interactables?: Record<string, any>;
+  // Fixed: Index Signatures allow dynamic lookup like room.exits[direction]
+  exits: { [key: string]: string }; 
+  interactables?: { [key: string]: any }; 
 };
