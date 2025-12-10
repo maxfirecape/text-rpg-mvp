@@ -1,3 +1,4 @@
+
 // 1. STATS
 export type Stats = {
   str: number;
@@ -28,7 +29,7 @@ export type Skill = {
   name: string;
   cost: number;
   type: string;
-  effect?: string; // Fixed: Added to support legacy checks
+  effect?: string; 
   formula?: string;
   val?: number;
   stat?: string;
@@ -74,7 +75,18 @@ export type Character = {
   unlockedSkills: string[];
 };
 
-// 5. ENEMIES
+// 5. CLASSES
+export type Class = {
+  id: string;
+  name: string;
+  stats: Stats;
+  startingEquipment: string[];
+  startingItems: string[];
+  startingCredits: number;
+  unlocks: { [key: string]: string };
+};
+
+// 6. ENEMIES
 export type Enemy = {
   id: string;
   name: string;
@@ -86,18 +98,25 @@ export type Enemy = {
   description?: string;
   messages: { lowHealth: string; death: string };
   status: StatusEffect[];
-  // Fixed: Added ATB fields to prevent GameStore crash
   atbTimer?: number;
   state?: 'idle' | 'charging' | 'attacking';
 };
 
-// 6. ROOMS
+// 7. INTERACTABLES
+export type Interactable = {
+  type?: 'npc';
+  name?: string;
+  locked?: boolean;
+  loot?: string;
+  message: string;
+};
+
+// 8. ROOMS
 export type Room = {
   id: string;
   name: string;
   description: string;
   image?: string;
-  // Fixed: Index Signatures allow dynamic lookup like room.exits[direction]
   exits: { [key: string]: string }; 
-  interactables?: { [key: string]: any }; 
+  interactables?: { [key: string]: Interactable }; 
 };

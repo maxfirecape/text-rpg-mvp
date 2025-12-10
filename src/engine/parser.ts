@@ -1,15 +1,24 @@
 
-import { useGameStore } from '../store/gameStore';
-import classesData from '../data/classes.json';
-import roomsData from '../data/rooms.json';
-import enemiesData from '../data/enemies.json';
-import itemsData from '../data/items.json';
-import skillsData from '../data/skills.json';
-import type { Character, Enemy, Skill } from '../types';
+import { useGameStore as store } from '../store/gameStore';
+import type { GameState } from '../store/gameStore';
+import classesDataJson from '../data/classes.json';
+import roomsDataJson from '../data/rooms.json';
+import enemiesDataJson from '../data/enemies.json';
+import itemsDataJson from '../data/items.json';
+import skillsDataJson from '../data/skills.json';
+import type { Character, Enemy, Skill, Item, Room, Class } from '../types';
 
-const getRoom = (id: string) => roomsData.find(r => r.id === id);
-const findItem = (q: string) => itemsData.find(i => i.id === q || i.name.toLowerCase() === q || i.aliases?.includes(q));
-const findSkill = (q: string) => skillsData.find(s => s.id === q || s.name.toLowerCase() === q || s.aliases?.includes(q)) as Skill | undefined;
+// --- TYPE-SAFE DATA --- 
+const roomsData = roomsDataJson as unknown as Room[];
+const itemsData = itemsDataJson as unknown as Item[];
+const skillsData = skillsDataJson as unknown as Skill[];
+const classesData = classesDataJson as unknown as Class[];
+const enemiesData = enemiesDataJson as unknown as Enemy[];
+
+// --- HELPERS ---
+const getRoom = (id: string): Room | undefined => roomsData.find(r => r.id === id);
+const findItem = (q: string): Item | undefined => itemsData.find(i => i.id === q || i.name.toLowerCase() === q || i.aliases?.includes(q));
+const findSkill = (q: string): Skill | undefined => skillsData.find(s => s.id === q || s.name.toLowerCase() === q || s.aliases?.includes(q));
 
 const resolveEnemyIndex = (q: string, enemies: Enemy[]) => {
   if (!q) return enemies.findIndex(e => e.hp > 0);
@@ -25,41 +34,41 @@ const resolvePartyIndex = (q: string, party: Character[]) => {
   return party.findIndex(c => c.name.toLowerCase().includes(l));
 };
 
-const handleDialogue = (input: string, store: any) => {
-  if (store.activeDialogue === "rex_intro") {
+const handleDialogue = (input: string, currentState: GameState) => {
+  if (currentState.activeDialogue === "rex_intro") {
     if (["1", "2"].includes(input)) {
-      store.setInputLock(true);
-      store.setDialogue(null);
-      store.addLog(input === "1" ? "> That's right." : "> ...");
+      store.getState().setInputLock(true);
+      store.getState().setDialogue(null);
+      store.getState().addLog(input === "1" ? "> That's right." : "> ...");
       setTimeout(() => {
-        store.addLog(`Guards: "Quiet!" | Rex smirks.`);
-        store.setInputLock(false);
+        store.getState().addLog(`Guards: "Quiet!" | Rex smirks.`);
+        store.getState().setInputLock(false);
       }, 2000);
-    } else store.addLog("Select 1 or 2.");
+    } else store.getState().addLog("Select 1 or 2.");
     return true;
   }
   return false;
 };
 
-// COMMAND HANDLERS
-const cmdLook = (args: string, store: any) => {
-  const room = getRoom(store.currentRoomId);
+// --- COMMAND HANDLERS ---
+const cmdLook = (args: string, currentState: GameState) => {
+  const room = getRoom(currentState.currentRoomId);
   if (!room) return;
   if (!args) {
-    store.addLog(`[${room.name}]`);
-    store.addLog(room.description);
+    store.getState().addLog(`[${room.name}]`);
+    store.getState().addLog(room.description);
     if (room.interactables) {
-      const visible = Object.keys(room.interactables).filter(k => k !== 'door' && k !== 'chest');
-      if (visible.length > 0) store.addLog(`You see: ${visible.join(', ')}`);
+      const visible = Object.keys(room.interactables).filter(k => k !== 'door' && !(room.interactables?.[k].loot && currentState.lootedChests.includes(room.id + "_" + k)));
+      if (visible.length > 0) store.getState().addLog(`You see: ${visible.join(', ')}`);
     }
   } else {
-    cmdExamine(args, store);
+    cmdExamine(args, currentState);
   }
 };
 
-const cmdExamine = (args: string, store: any) => {
-  if (!args) { store.addLog("Examine what?"); return; }
-  const room = getRoom(store.currentRoomId);
+const cmdExamine = (args: string, currentState: GameState) => {
+  if (!args) { store.getState().addLog("Examine what?"); return; }
+  const room = getRoom(currentState.currentRoomId);
   const target = args.toLowerCase();
 
   if (room?.interactables) {
@@ -67,121 +76,121 @@ const cmdExamine = (args: string, store: any) => {
     if (key) {
       const obj = room.interactables[key];
       if (key === "prisoner" || key === "rex") {
-        store.setDialogue("rex_intro");
-        store.setInputLock(true);
+        store.getState().setDialogue("rex_intro");
+        store.getState().setInputLock(true);
         setTimeout(() => {
-           store.addLog(`Rex looks up. "Took you long enough..."`); 
-           store.addLog("1. That's right");
-           store.addLog("2. Stay silent");
-           store.setInputLock(false);
+           store.getState().addLog(`Rex looks up. "Took you long enough..."`); 
+           store.getState().addLog("1. That's right");
+           store.getState().addLog("2. Stay silent");
+           store.getState().setInputLock(false);
         }, 500);
       } else {
-        store.addLog(obj.message || "You see nothing special.");
+        store.getState().addLog(obj.message || "You see nothing special.");
       }
       return;
     }
   }
   
   const item = findItem(target);
-  if (item && store.inventory.includes(item.id)) {
-    const i = item as any;
-    store.addLog(`[${i.name}]: ${i.description}`);
-    if (i.damage) store.addLog(`Damage: ${i.damage}`);
-    if (i.defense) store.addLog(`Defense: ${i.defense.min * 100}% - ${i.defense.max * 100}%`);
+  if (item && currentState.inventory.includes(item.id)) {
+    store.getState().addLog(`[${item.name}]: ${item.description}`);
+    if (item.damage) store.getState().addLog(`Damage: ${item.damage}`);
+    if (item.defense) store.getState().addLog(`Defense: ${item.defense.min * 100}% - ${item.defense.max * 100}%`);
     return;
   }
-  store.addLog(`You don't see '${args}' here.`);
+  store.getState().addLog(`You don't see '${args}' here.`);
 };
 
-const cmdMove = (dir: string, store: any) => {
-  const room = getRoom(store.currentRoomId);
+const cmdMove = (dir: string, currentState: GameState) => {
+  const room = getRoom(currentState.currentRoomId);
   const directionMap: { [key: string]: string } = { n: 'north', s: 'south', e: 'east', w: 'west', u: 'up', d: 'down' };
   const d = directionMap[dir] || dir;
   
   if (room?.exits && room.exits[d]) {
-    store.setRoom(room.exits[d]);
+    store.getState().setRoom(room.exits[d]);
     const newRoom = getRoom(room.exits[d]);
-    if (newRoom) store.addLog(newRoom.description);
+    if (newRoom) store.getState().addLog(newRoom.description);
   } else {
-    store.addLog("You can't go that way.");
+    store.getState().addLog("You can't go that way.");
   }
 };
 
-const cmdInventory = (_args: string, store: any) => {
-  store.addLog(`CREDITS: ${store.credits}`);
-  if (store.inventory.length === 0) store.addLog("Your bag is empty.");
+const cmdInventory = () => {
+  const { credits, inventory } = store.getState();
+  store.getState().addLog(`CREDITS: ${credits}`);
+  if (inventory.length === 0) store.getState().addLog("Your bag is empty.");
   else {
     const counts: {[key:string]:number} = {};
-    store.inventory.forEach((id: string) => { counts[id] = (counts[id] || 0) + 1; });
+    inventory.forEach((id: string) => { counts[id] = (counts[id] || 0) + 1; });
     const list = Object.keys(counts).map(id => {
        const i = findItem(id);
        return `${i?.name || id} (x${counts[id]})`;
     });
-    store.addLog(`BAG: ${list.join(', ')}`);
+    store.getState().addLog(`BAG: ${list.join(', ')}`);
   }
 };
 
-const cmdStats = (args: string, store: any) => {
-  const targetIdx = resolvePartyIndex(args, store.party);
-  const target = targetIdx !== -1 ? store.party[targetIdx] : null;
+const cmdStats = (args: string, currentState: GameState) => {
+  const targetIdx = resolvePartyIndex(args, currentState.party);
+  const target = targetIdx !== -1 ? currentState.party[targetIdx] : null;
   if (target) {
-    store.addLog(`--- ${target.name} (${target.classId.toUpperCase()}) ---`);
-    store.addLog(`LVL: ${target.level} | XP: ${target.xp}/${target.maxXp}`);
-    store.addLog(`HP: ${target.hp}/${target.maxHp} | SP: ${target.mp}/${target.maxMp}`);
-    store.addLog(`STR: ${target.stats.str} | DEX: ${target.stats.dex}`);
-    store.addLog(`CON: ${target.stats.con} | WIS: ${target.stats.wis}`);
+    store.getState().addLog(`--- ${target.name} (${target.classId.toUpperCase()}) ---`);
+    store.getState().addLog(`LVL: ${target.level} | XP: ${target.xp}/${target.maxXp}`);
+    store.getState().addLog(`HP: ${target.hp}/${target.maxHp} | SP: ${target.mp}/${target.maxMp}`);
+    store.getState().addLog(`STR: ${target.stats.str} | DEX: ${target.stats.dex}`);
+    store.getState().addLog(`CON: ${target.stats.con} | WIS: ${target.stats.wis}`);
   } else {
-    store.party.forEach((c: Character) => {
-      store.addLog(`[${c.name}] Lvl ${c.level} ${c.classId} - XP: ${c.xp}/${c.maxXp}`);
+    currentState.party.forEach((c: Character) => {
+      store.getState().addLog(`[${c.name}] Lvl ${c.level} ${c.classId} - XP: ${c.xp}/${c.maxXp}`);
     });
   }
 };
 
-const cmdSkills = (args: string, store: any) => {
-  const targetIdx = resolvePartyIndex(args, store.party);
-  const target = targetIdx !== -1 ? store.party[targetIdx] : store.party[0]; 
+const cmdSkills = (args: string, currentState: GameState) => {
+  const targetIdx = resolvePartyIndex(args, currentState.party);
+  const target = targetIdx !== -1 ? currentState.party[targetIdx] : currentState.party[0]; 
   if (target) {
-    store.addLog(`--- SKILLS: ${target.name} ---`);
-    if (target.unlockedSkills.length === 0) store.addLog("No skills unlocked.");
+    store.getState().addLog(`--- SKILLS: ${target.name} ---`);
+    if (target.unlockedSkills.length === 0) store.getState().addLog("No skills unlocked.");
     target.unlockedSkills.forEach((sid: string) => {
-      const s = skillsData.find(sk => sk.id === sid);
-      if (s) store.addLog(`> ${s.name} (${s.cost} SP): ${s.description}`);
+      const s = findSkill(sid);
+      if (s) store.getState().addLog(`> ${s.name} (${s.cost} SP): ${s.description}`);
     });
   }
 };
 
-const cmdEquip = (args: string, store: any) => {
+const cmdEquip = (args: string, currentState: GameState) => {
   const parts = args.split(" on ");
   const itemName = parts[0];
-  const charName = parts[1] || store.party[0].name;
+  const charName = parts[1] || currentState.party[0].name;
   const item = findItem(itemName);
-  const charIdx = resolvePartyIndex(charName, store.party);
-  if (!item) { store.addLog("Unknown item."); return; }
-  if (charIdx === -1) { store.addLog("Character not found."); return; }
-  store.equipItem(charIdx, item.id);
+  const charIdx = resolvePartyIndex(charName, currentState.party);
+  if (!item) { store.getState().addLog("Unknown item."); return; }
+  if (charIdx === -1) { store.getState().addLog("Character not found."); return; }
+  store.getState().equipItem(charIdx, item.id);
 };
 
-const cmdUnequip = (args: string, store: any) => {
+const cmdUnequip = (args: string, currentState: GameState) => {
   const parts = args.split(" on ");
   const slotName = parts[0].toLowerCase();
-  const charName = parts[1] || store.party[0].name;
-  const charIdx = resolvePartyIndex(charName, store.party);
-  if (charIdx === -1) { store.addLog("Character not found."); return; }
+  const charName = parts[1] || currentState.party[0].name;
+  const charIdx = resolvePartyIndex(charName, currentState.party);
+  if (charIdx === -1) { store.getState().addLog("Character not found."); return; }
   if (['weapon', 'armor', 'accessory'].includes(slotName)) {
-    store.unequipItem(charIdx, slotName as any);
+    store.getState().unequipItem(charIdx, slotName as 'weapon' | 'armor' | 'accessory');
   } else {
-    store.addLog("Slot must be: weapon, armor, or accessory.");
+    store.getState().addLog("Slot must be: weapon, armor, or accessory.");
   }
 };
 
-const cmdCombatAction = (command: string, args: string, store: any) => {
-  if (!store.isCombat) { store.addLog("There is no one to fight."); return; }
-  const actorIndex = store.party.findIndex((c: Character) => c.hp > 0);
-  if (actorIndex === -1) { store.addLog("Party is wiped out!"); return; }
+const cmdCombatAction = (command: string, args: string, currentState: GameState) => {
+  if (!currentState.isCombat) { store.getState().addLog("There is no one to fight."); return; }
+  const actorIndex = currentState.party.findIndex((c: Character) => c.hp > 0);
+  if (actorIndex === -1) { store.getState().addLog("Party is wiped out!"); return; }
 
-  if (['attack', 'a', 'kill'].includes(command)) {
-    const tIdx = resolveEnemyIndex(args, store.activeEnemies);
-    store.performAction(actorIndex, 'attack', tIdx, 'enemy');
+  if (['attack', 'a', 'kill', 'hit'].includes(command)) {
+    const tIdx = resolveEnemyIndex(args, currentState.activeEnemies);
+    store.getState().performAction(actorIndex, 'attack', tIdx, 'enemy');
   } 
   else if (['cast', 'c', 'use'].includes(command)) {
     let spellStr = args;
@@ -192,64 +201,84 @@ const cmdCombatAction = (command: string, args: string, store: any) => {
       targetStr = parts[1];
     }
     const skill = findSkill(spellStr);
-    if (!skill) { store.addLog("Unknown spell/skill."); return; }
+    if (!skill) { store.getState().addLog("Unknown spell/skill."); return; }
 
     if (skill.type === "heal" || skill.type === "buff" || skill.type === "revive") {
-      let tid = resolvePartyIndex(targetStr, store.party);
+      let tid = resolvePartyIndex(targetStr, currentState.party);
       if (tid === -1 && !targetStr) tid = actorIndex; 
-      store.performAction(actorIndex, skill.id, tid, 'party');
+      store.getState().performAction(actorIndex, skill.id, tid, 'party');
     } else {
-      const tid = resolveEnemyIndex(targetStr, store.activeEnemies);
-      store.performAction(actorIndex, skill.id, tid, 'enemy');
+      const tid = resolveEnemyIndex(args, currentState.activeEnemies);
+      store.getState().performAction(actorIndex, skill.id, tid, 'enemy');
     }
   }
 };
 
-const cmdOpen = (args: string, store: any) => {
-  if (args.includes('door') && store.currentRoomId === 'room_01_cell') {
-    store.addLog("You kick the door open! 3 Guards attack!");
+const cmdOpen = (args: string, currentState: GameState) => {
+  const room = getRoom(currentState.currentRoomId);
+  if (!room || !room.interactables) { store.getState().addLog("Nothing to open."); return; }
+  const target = args.toLowerCase();
+
+  if (target.includes('door') && currentState.currentRoomId === 'room_01_cell') {
+    store.getState().addLog("You kick the door open! 3 Guards attack!");
     const g = enemiesData.find(e => e.id === 'guard_01');
     if (g) {
       const guards = ['A', 'B', 'C'].map((l, i) => ({ 
         ...g, id: `g${i}`, name: `Guard ${l}`, hp: g.hp, maxHp: g.maxHp, status: [], loot: [...(g.loot||[])] 
       } as Enemy));
-      store.startCombat(guards);
+      store.getState().startCombat(guards);
     }
-  } else if (args.includes('chest') && store.currentRoomId === 'room_02_corridor') {
-    store.addLog("You open the chest and find a Lucky Charm!");
-    store.addToInventory("lucky_charm");
-  } else {
-    store.addLog("It won't open.");
+    return;
   }
+
+  const interactableKey = Object.keys(room.interactables).find(k => k.toLowerCase() === target);
+  if (interactableKey) {
+    const chestId = room.id + "_" + interactableKey;
+    if (currentState.lootedChests.includes(chestId)) {
+        store.getState().addLog("You've already looted that.");
+        return;
+    }
+    const loot = room.interactables[interactableKey]?.loot;
+    if (loot) {
+        store.getState().addLog(`You open the ${interactableKey} and find a ${loot}!`);
+        store.getState().addToInventory(loot);
+        store.getState().setChestLooted(chestId);
+        return;
+    }
+  }
+  
+  store.getState().addLog("It won't open.");
 };
 
-const cmdHelp = (_args: string, store: any) => {
-  store.addLog("COMMANDS: look, i, stats, equip [item], attack [target], cast [spell] [target]");
+const cmdHelp = () => {
+  store.getState().addLog("COMMANDS: look, i, stats, equip [item], attack [target], cast [spell] [target]");
 };
 
+// --- MAIN ---
 export const processCommand = (input: string) => {
-  const store = useGameStore.getState();
+  const currentState = store.getState();
   const clean = input.trim();
   if (!clean) return;
   const parts = clean.split(" ");
   const command = parts[0].toLowerCase();
   const args = parts.slice(1).join(" ");
 
-  store.addLog(`> ${input}`);
-  if (handleDialogue(clean, store)) return;
-  if (store.isInputLocked) return;
+  store.getState().addLog(`> ${input}`);
+  if (handleDialogue(clean, currentState)) return;
+  if (currentState.isInputLocked) return;
 
-  if (store.party.length < 3) {
-    if (!store.tempCharacterName) {
-      if (clean.length < 2) { store.addLog("Name too short."); return; }
-      store.setTempName(clean);
-      store.addLog(`Welcome, ${clean}. Choose Class: [rogue], [fighter], [wizard], [cleric]`);
+  // Character Creation
+  if (currentState.party.length < 3) {
+    if (!currentState.tempCharacterName) {
+      if (clean.length < 2) { store.getState().addLog("Name too short."); return; }
+      store.getState().setTempName(clean);
+      store.getState().addLog(`Welcome, ${clean}. Choose Class: [rogue], [fighter], [wizard], [cleric]`);
     } else {
       const cls = classesData.find(c => c.id === command || c.name.toLowerCase() === command);
       if (cls) {
         const newHero: Character = {
           id: `h${Date.now()}`,
-          name: store.tempCharacterName,
+          name: currentState.tempCharacterName,
           classId: cls.id,
           level: 1, xp: 0, maxXp: 100,
           hp: 20 + cls.stats.con, maxHp: 20 + cls.stats.con,
@@ -258,50 +287,51 @@ export const processCommand = (input: string) => {
           equipment: { weapon: null, armor: null, accessories: [] },
           isPlayerControlled: true,
           status: [],
-          unlockedSkills: cls.startingItems.filter(i => skillsData.some(s => s.id === i)),
+          unlockedSkills: [],
         };
-        store.addCharacter(newHero, cls.startingCredits);
-        cls.startingEquipment.forEach(id => store.addToInventory(id));
-        cls.startingItems.forEach(id => store.addToInventory(id));
-        store.addLog(`Registered ${newHero.name}.`);
-        if (useGameStore.getState().party.length < 3) store.addLog(`Enter Name for Hero ${useGameStore.getState().party.length + 1}:`);
+        store.getState().addCharacter(newHero, cls.startingCredits);
+        cls.startingEquipment.forEach(id => store.getState().addToInventory(id));
+        cls.startingItems.forEach(id => store.getState().addToInventory(id));
+        store.getState().addLog(`Registered ${newHero.name}.`);
+        if (store.getState().party.length < 3) store.getState().addLog(`Enter Name for Hero ${store.getState().party.length + 1}:`);
         else {
-          store.addLog("INITIALIZATION COMPLETE.");
-          setTimeout(() => { const r = getRoom(store.currentRoomId); if(r) store.addLog(r.description); }, 1000);
+          store.getState().addLog("INITIALIZATION COMPLETE.");
+          setTimeout(() => { const r = getRoom(store.getState().currentRoomId); if(r) store.getState().addLog(r.description); }, 1000);
         }
-      } else store.addLog("Invalid Class.");
+      } else store.getState().addLog("Invalid Class.");
     }
     return;
   }
 
+  // Command Routing
   switch (command) {
     case 'n': case 's': case 'e': case 'w': case 'north': case 'south': case 'east': case 'west':
-      cmdMove(command, store); break;
+      cmdMove(command, currentState); break;
     case 'l': case 'look':
-      cmdLook(args, store); break;
+      cmdLook(args, currentState); break;
     case 'x': case 'examine': case 'check': case 'read': case 'search':
-      cmdExamine(args, store); break;
+      cmdExamine(args, currentState); break;
     case 'i': case 'inv': case 'inventory':
-      cmdInventory(args, store); break;
+      cmdInventory(); break;
     case 'stats': case 'score': case 'status':
-      cmdStats(args, store); break;
+      cmdStats(args, currentState); break;
     case 'skills': case 'spells': case 'abilities':
-      cmdSkills(args, store); break;
+      cmdSkills(args, currentState); break;
     case 'equip': case 'wear':
-      cmdEquip(args, store); break;
+      cmdEquip(args, currentState); break;
     case 'unequip': case 'remove':
-      cmdUnequip(args, store); break;
+      cmdUnequip(args, currentState); break;
     case 'open':
-      cmdOpen(args, store); break;
+      cmdOpen(args, currentState); break;
     case 'h': case 'help':
-      cmdHelp(args, store); break;
+      cmdHelp(); break;
     case 'a': case 'attack': case 'kill': case 'hit':
-      cmdCombatAction(command, args, store); 
+      cmdCombatAction(command, args, currentState); 
       break;
     case 'c': case 'cast': case 'use':
-      cmdCombatAction(command, args, store); 
+      cmdCombatAction(command, args, currentState); 
       break;
     default:
-      store.addLog("I don't know how to do that.");
+      store.getState().addLog("I don't know how to do that.");
   }
 };

@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import type { Character, Enemy, Item, Stats, StatusEffect, Skill } from '../types';
+import type { Character, Enemy, Item, Stats, StatusEffect, Skill, Class } from '../types';
 import skillsData from '../data/skills.json';
 import itemsData from '../data/items.json';
-import classesData from '../data/classes.json';
+import classesDataJson from '../data/classes.json';
 
+const classesData = classesDataJson as unknown as Class[];
 const getItem = (id: string | null) => itemsData.find(i => i.id === id) as Item | undefined;
 
 // --- DYNAMIC MATH ENGINE ---
@@ -21,10 +22,11 @@ const calcVal = (formula: string, stats: Stats, lvl: number = 1): number => {
   } catch { return 1; }
 };
 
-interface GameState {
+export interface GameState {
   party: Character[]; inventory: string[]; credits: number; currentRoomId: string; log: string[];
   isCombat: boolean; activeEnemies: Enemy[]; isInputLocked: boolean; activeDialogue: string | null;
   tempCharacterName: string | null; 
+  lootedChests: string[];
   
   addLog: (m: string) => void;
   setRoom: (id: string) => void;
@@ -35,15 +37,17 @@ interface GameState {
   addToInventory: (id: string) => void;
   equipItem: (idx: number, id: string) => void;
   unequipItem: (idx: number, s: string, i?: number) => void;
+  setChestLooted: (id: string) => void;
   
   startCombat: (e: Enemy[]) => void;
   performAction: (aIdx: number, sId: string, tIdx: number, type?: 'enemy'|'party') => void;
   tick: (dt: number) => void; 
 }
 
-export const useGameStore = create<GameState>()((set, get) => ({
+export const useGameStore = create<GameState>((set, get) => ({
   party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell', log: ["Welcome to Inertia.", "Enter Name for Hero 1:"], 
   isCombat: false, activeEnemies: [], isInputLocked: false, activeDialogue: null, tempCharacterName: null,
+  lootedChests: [],
 
   addLog: (m) => set(s => ({ log: [...s.log, m] })),
   setRoom: (id) => set({ currentRoomId: id }),
@@ -52,6 +56,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
   setTempName: (n) => set({ tempCharacterName: n }),
   addCharacter: (c, cr) => set(s => ({ party: [...s.party, c], credits: s.credits + cr, tempCharacterName: null })),
   addToInventory: (id) => set(s => ({ inventory: [...s.inventory, id] })),
+  setChestLooted: (id) => set(s => ({ lootedChests: [...s.lootedChests, id] })),
 
   equipItem: (idx, id) => set(s => {
     const p = [...s.party]; const c = p[idx]; const item = getItem(id);
@@ -78,58 +83,85 @@ export const useGameStore = create<GameState>()((set, get) => ({
 
   startCombat: (e) => set(s => ({ isCombat: true, activeEnemies: e.map(x => ({...x, atbTimer: Math.random()*5 + 5, state: 'idle'})), log: [...s.log, "COMBAT STARTED!"] })),
 
+  // --- FIXED TICK FUNCTION (IMMUTABLE UPDATES) ---
   tick: (dt) => set(s => {
     if(!s.isCombat) return {};
-    const newLog = [...s.log];
-    const enemies = [...s.activeEnemies];
-    const party = [...s.party];
 
-    const handleStatus = (entity: any) => {
-      if(entity.hp <= 0) return;
-      entity.status = entity.status.filter((eff: StatusEffect) => {
-        eff.duration -= dt;
-        if(eff.duration <= 0) {
-           if(['stun','frozen','disabled'].includes(eff.type)) newLog.push(`${entity.name} is no longer ${eff.type}.`);
-           return false; 
+    // Helper: Process status duration immutably
+    const processStatuses = (entity: any) => {
+        if (entity.hp <= 0) return entity;
+        const activeStatus = entity.status.filter((eff: StatusEffect) => {
+            eff.duration -= dt;
+            return eff.duration > 0;
+        });
+        if (activeStatus.length !== entity.status.length) {
+            return { ...entity, status: activeStatus };
         }
-        return true;
-      });
+        return entity;
     };
-    party.forEach(handleStatus);
-    enemies.forEach(handleStatus);
 
-    enemies.forEach(e => {
-      if(e.hp <= 0 || e.status.some((x:any) => ['stun','frozen','disabled'].includes(x.type))) return;
-      e.atbTimer = (e.atbTimer || 0) - dt;
+    // 1. Update Status Effects for everyone
+    let nextParty = s.party.map(processStatuses);
+    let nextEnemies = s.activeEnemies.map(processStatuses);
+    const newLog = [...s.log];
 
-      if(e.state === 'idle' && e.atbTimer <= 0) {
+    // 2. Process Enemy AI
+    nextEnemies = nextEnemies.map((e: Enemy) => {
+      // Skip dead or disabled enemies
+      if(e.hp <= 0 || e.status.some((x: StatusEffect) => ['stun','frozen','disabled'].includes(x.type))) {
+          return e;
+      }
+
+      let newTimer = (e.atbTimer || 0) - dt;
+      let newState = e.state;
+
+      // IDLE -> CHARGING
+      if(e.state === 'idle' && newTimer <= 0) {
          newLog.push(`${e.name} readies weapon!`);
-         e.state = 'charging';
-         e.atbTimer = 5; 
+         newState = 'charging';
+         newTimer = 5; 
       } 
-      else if(e.state === 'charging' && e.atbTimer <= 0) {
-         const targets = party.filter(p => p.hp > 0);
-         if(targets.length > 0) {
-           const t = targets[Math.floor(Math.random()*targets.length)];
+      // CHARGING -> ATTACK
+      else if(e.state === 'charging' && newTimer <= 0) {
+         const livingTargets = nextParty.filter((p: Character) => p.hp > 0);
+         
+         if(livingTargets.length > 0) {
+           // Pick random target
+           const targetIndex = Math.floor(Math.random() * livingTargets.length);
+           const targetId = livingTargets[targetIndex].id;
+
+           // Calculate Enemy Damage Base
            const mult = 0.7 + Math.random()*0.4;
            const baseDmg = Math.floor(Math.random()*4)+1 + Math.floor(e.stats.str/2);
-           let reduct = 0;
-           const arm = getItem(t.equipment.armor);
-           if(arm?.defense) reduct += Math.random()*(arm.defense.max - arm.defense.min) + arm.defense.min;
-           const dmg = Math.max(1, Math.floor((baseDmg * mult) * (1 - reduct)));
            
-           if(t.status.some((s:any) => s.type === 'evade_up') && Math.random() > 0.5) {
-              newLog.push(`${e.name} attacks ${t.name} but MISSES!`);
-           } else {
-              t.hp = Math.max(0, t.hp - dmg);
-              newLog.push(`${e.name} hits ${t.name} for ${dmg} DMG!`);
-           }
+           // Apply damage to the specific party member immutably
+           nextParty = nextParty.map((p: Character) => {
+               if (p.id !== targetId) return p;
+
+               // Calculate Reduction from Armor
+               let reduct = 0;
+               const arm = getItem(p.equipment.armor);
+               if(arm?.defense) reduct += Math.random()*(arm.defense.max - arm.defense.min) + arm.defense.min;
+               
+               // Check Evasion
+               if(p.status.some((st: StatusEffect) => st.type === 'evade_up') && Math.random() > 0.5) {
+                   newLog.push(`${e.name} attacks ${p.name} but MISSES!`);
+                   return p;
+               }
+
+               const dmg = Math.max(1, Math.floor((baseDmg * mult) * (1 - reduct)));
+               newLog.push(`${e.name} hits ${p.name} for ${dmg} DMG!`);
+               return { ...p, hp: Math.max(0, p.hp - dmg) };
+           });
          }
-         e.state = 'idle';
-         e.atbTimer = Math.random()*15 + 5; 
+         newState = 'idle';
+         newTimer = Math.random()*15 + 5; 
       }
+
+      return { ...e, atbTimer: newTimer, state: newState };
     });
-    return { party, activeEnemies: enemies, log: newLog };
+
+    return { party: nextParty, activeEnemies: nextEnemies, log: newLog };
   }),
 
   performAction: (aIdx, sId, tIdx, type='enemy') => {
@@ -191,7 +223,6 @@ export const useGameStore = create<GameState>()((set, get) => ({
                c.xp -= c.maxXp; c.level++; c.maxXp = Math.floor(c.maxXp*1.5);
                c.maxHp += 5; c.hp = c.maxHp;
                const cls = classesData.find(cl => cl.id === c.classId);
-               // @ts-ignore
                const u = cls?.unlocks ? cls.unlocks[c.level.toString()] : null;
                if(u) u.split(',').forEach((k:string)=> { if(!c.unlockedSkills.includes(k.trim())) c.unlockedSkills.push(k.trim()); });
             }
