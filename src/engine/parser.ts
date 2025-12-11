@@ -1,4 +1,3 @@
-
 import { useGameStore as store } from '../store/gameStore';
 import type { GameState } from '../store/gameStore';
 import classesDataJson from '../data/classes.json';
@@ -8,14 +7,12 @@ import itemsDataJson from '../data/items.json';
 import skillsDataJson from '../data/skills.json';
 import type { Character, Enemy, Skill, Item, Room, Class } from '../types';
 
-// --- TYPE-SAFE DATA --- 
 const roomsData = roomsDataJson as unknown as Room[];
 const itemsData = itemsDataJson as unknown as Item[];
 const skillsData = skillsDataJson as unknown as Skill[];
 const classesData = classesDataJson as unknown as Class[];
 const enemiesData = enemiesDataJson as unknown as Enemy[];
 
-// --- HELPERS ---
 const getRoom = (id: string): Room | undefined => roomsData.find(r => r.id === id);
 const findItem = (q: string): Item | undefined => itemsData.find(i => i.id === q || i.name.toLowerCase() === q || i.aliases?.includes(q));
 const findSkill = (q: string): Skill | undefined => skillsData.find(s => s.id === q || s.name.toLowerCase() === q || s.aliases?.includes(q));
@@ -50,7 +47,6 @@ const handleDialogue = (input: string, currentState: GameState) => {
   return false;
 };
 
-// --- COMMAND HANDLERS ---
 const cmdLook = (args: string, currentState: GameState) => {
   const room = getRoom(currentState.currentRoomId);
   if (!room) return;
@@ -105,6 +101,22 @@ const cmdMove = (dir: string, currentState: GameState) => {
   const room = getRoom(currentState.currentRoomId);
   const directionMap: { [key: string]: string } = { n: 'north', s: 'south', e: 'east', w: 'west', u: 'up', d: 'down' };
   const d = directionMap[dir] || dir;
+
+  if (currentState.currentRoomId === 'room_01_cell' && d === 'west') {
+      const doorId = 'room_01_cell_door';
+      if (!currentState.lootedChests.includes(doorId)) {
+          store.getState().addLog("You try to leave, but the door kicks open!");
+          const g = enemiesData.find(e => e.id === 'guard_01');
+          if (g) {
+              const enemies = ['A', 'B', 'C'].map((l, i) => ({ 
+                  ...g, id: `e${Date.now()}_${i}`, name: `${g.name} ${l}`, hp: g.hp, maxHp: g.maxHp, status: [], loot: [...(g.loot||[])] 
+              } as Enemy));
+              store.getState().startCombat(enemies);
+              store.getState().setChestLooted(doorId); 
+          }
+          return; 
+      }
+  }
   
   if (room?.exits && room.exits[d]) {
     store.getState().setRoom(room.exits[d]);
@@ -133,12 +145,16 @@ const cmdInventory = () => {
 const cmdStats = (args: string, currentState: GameState) => {
   const targetIdx = resolvePartyIndex(args, currentState.party);
   const target = targetIdx !== -1 ? currentState.party[targetIdx] : null;
+  
   if (target) {
+    // --- UPDATED: USE DERIVED STATS FOR DISPLAY ---
+    const derived = store.getState().getDerivedStats(target);
     store.getState().addLog(`--- ${target.name} (${target.classId.toUpperCase()}) ---`);
     store.getState().addLog(`LVL: ${target.level} | XP: ${target.xp}/${target.maxXp}`);
     store.getState().addLog(`HP: ${target.hp}/${target.maxHp} | SP: ${target.mp}/${target.maxMp}`);
-    store.getState().addLog(`STR: ${target.stats.str} | DEX: ${target.stats.dex}`);
-    store.getState().addLog(`CON: ${target.stats.con} | WIS: ${target.stats.wis}`);
+    store.getState().addLog(`STR: ${derived.str} | DEX: ${derived.dex}`);
+    store.getState().addLog(`CON: ${derived.con} | WIS: ${derived.wis}`);
+    // ---------------------------------------------
   } else {
     currentState.party.forEach((c: Character) => {
       store.getState().addLog(`[${c.name}] Lvl ${c.level} ${c.classId} - XP: ${c.xp}/${c.maxXp}`);
@@ -185,18 +201,36 @@ const cmdUnequip = (args: string, currentState: GameState) => {
 
 const cmdCombatAction = (command: string, args: string, currentState: GameState) => {
   if (!currentState.isCombat) { store.getState().addLog("There is no one to fight."); return; }
-  const actorIndex = currentState.party.findIndex((c: Character) => c.hp > 0);
-  if (actorIndex === -1) { store.getState().addLog("Party is wiped out!"); return; }
+  
+  const currentActorId = currentState.battleQueue[0];
+  if (!currentActorId) {
+      store.getState().addLog("Wait for your turn!");
+      return;
+  }
+
+  const actorIndex = currentState.party.findIndex(c => c.id === currentActorId);
+  const actor = currentState.party[actorIndex];
+
+  const potentialName = args.split(" ")[0];
+  const namedIndex = resolvePartyIndex(potentialName, currentState.party);
+  
+  if (namedIndex !== -1 && currentState.party[namedIndex].id !== currentActorId) {
+      store.getState().addLog(`It's not ${currentState.party[namedIndex].name}'s turn! It's ${actor.name}'s turn.`);
+      return;
+  }
+
+  let cleanArgs = args;
+  if (namedIndex !== -1) cleanArgs = args.substring(potentialName.length).trim();
 
   if (['attack', 'a', 'kill', 'hit'].includes(command)) {
-    const tIdx = resolveEnemyIndex(args, currentState.activeEnemies);
+    const tIdx = resolveEnemyIndex(cleanArgs, currentState.activeEnemies);
     store.getState().performAction(actorIndex, 'attack', tIdx, 'enemy');
   } 
   else if (['cast', 'c', 'use'].includes(command)) {
-    let spellStr = args;
+    let spellStr = cleanArgs;
     let targetStr = "";
-    if (args.includes(" on ")) {
-      const parts = args.split(" on ");
+    if (cleanArgs.includes(" on ")) {
+      const parts = cleanArgs.split(" on ");
       spellStr = parts[0];
       targetStr = parts[1];
     }
@@ -208,7 +242,7 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
       if (tid === -1 && !targetStr) tid = actorIndex; 
       store.getState().performAction(actorIndex, skill.id, tid, 'party');
     } else {
-      const tid = resolveEnemyIndex(args, currentState.activeEnemies);
+      const tid = resolveEnemyIndex(cleanArgs, currentState.activeEnemies);
       store.getState().performAction(actorIndex, skill.id, tid, 'enemy');
     }
   }
@@ -219,30 +253,51 @@ const cmdOpen = (args: string, currentState: GameState) => {
   if (!room || !room.interactables) { store.getState().addLog("Nothing to open."); return; }
   const target = args.toLowerCase();
 
-  if (target.includes('door') && currentState.currentRoomId === 'room_01_cell') {
-    store.getState().addLog("You kick the door open! 3 Guards attack!");
-    const g = enemiesData.find(e => e.id === 'guard_01');
-    if (g) {
-      const guards = ['A', 'B', 'C'].map((l, i) => ({ 
-        ...g, id: `g${i}`, name: `Guard ${l}`, hp: g.hp, maxHp: g.maxHp, status: [], loot: [...(g.loot||[])] 
-      } as Enemy));
-      store.getState().startCombat(guards);
-    }
-    return;
-  }
-
   const interactableKey = Object.keys(room.interactables).find(k => k.toLowerCase() === target);
+  
   if (interactableKey) {
-    const chestId = room.id + "_" + interactableKey;
-    if (currentState.lootedChests.includes(chestId)) {
-        store.getState().addLog("You've already looted that.");
+    const obj = room.interactables[interactableKey];
+    const objectId = room.id + "_" + interactableKey;
+
+    if (currentState.lootedChests.includes(objectId)) {
+        store.getState().addLog("It's empty.");
         return;
     }
-    const loot = room.interactables[interactableKey]?.loot;
-    if (loot) {
-        store.getState().addLog(`You open the ${interactableKey} and find a ${loot}!`);
-        store.getState().addToInventory(loot);
-        store.getState().setChestLooted(chestId);
+
+    if (obj.locked && obj.reqKey) {
+        if (!currentState.inventory.includes(obj.reqKey)) {
+             const keyItem = findItem(obj.reqKey);
+             store.getState().addLog(`It's locked. You need a ${keyItem?.name || 'Key'}.`);
+             return;
+        }
+        store.getState().addLog("You unlock it.");
+    } else if (obj.locked) {
+        if (!obj.onOpen) {
+            store.getState().addLog("It's locked tight.");
+            return;
+        }
+    }
+
+    if (obj.onOpen === 'ambush' && obj.ambushEnemyId) {
+        store.getState().addLog(`You open the ${interactableKey}...`);
+        const g = enemiesData.find(e => e.id === obj.ambushEnemyId);
+        if (g) {
+            const enemies = ['A', 'B', 'C'].map((l, i) => ({ 
+                ...g, id: `e${Date.now()}_${i}`, name: `${g.name} ${l}`, hp: g.hp, maxHp: g.maxHp, status: [], loot: [...(g.loot||[])] 
+            } as Enemy));
+            
+            store.getState().addLog(`AMBUSH! ${enemies.length} ${g.name}s attack!`);
+            store.getState().startCombat(enemies);
+            store.getState().setChestLooted(objectId); 
+        }
+        return;
+    }
+
+    if (obj.loot) {
+        const item = findItem(obj.loot);
+        store.getState().addLog(`You find a ${item?.name || obj.loot}!`);
+        store.getState().addToInventory(obj.loot);
+        store.getState().setChestLooted(objectId);
         return;
     }
   }
@@ -254,11 +309,13 @@ const cmdHelp = () => {
   store.getState().addLog("COMMANDS: look, i, stats, equip [item], attack [target], cast [spell] [target]");
 };
 
-// --- MAIN ---
 export const processCommand = (input: string) => {
   const currentState = store.getState();
   const clean = input.trim();
   if (!clean) return;
+  
+  if (currentState.isGameOver) return; 
+
   const parts = clean.split(" ");
   const command = parts[0].toLowerCase();
   const args = parts.slice(1).join(" ");
@@ -267,7 +324,6 @@ export const processCommand = (input: string) => {
   if (handleDialogue(clean, currentState)) return;
   if (currentState.isInputLocked) return;
 
-  // Character Creation
   if (currentState.party.length < 3) {
     if (!currentState.tempCharacterName) {
       if (clean.length < 2) { store.getState().addLog("Name too short."); return; }
@@ -276,6 +332,20 @@ export const processCommand = (input: string) => {
     } else {
       const cls = classesData.find(c => c.id === command || c.name.toLowerCase() === command);
       if (cls) {
+        // @ts-ignore
+        const startingSkills = cls.startingSkills || [];
+
+        // --- UPDATED: AUTO-EQUIP LOGIC ---
+        const initEquip = { weapon: null as string|null, armor: null as string|null, accessories: [] as string[] };
+        cls.startingEquipment.forEach(id => {
+            const item = findItem(id);
+            if(item?.type === 'weapon') initEquip.weapon = id;
+            else if(item?.type === 'armor') initEquip.armor = id;
+            else if(item?.type === 'accessory') initEquip.accessories.push(id);
+            // Items are NOT added to inventory array if equipped
+        });
+        // --------------------------------
+
         const newHero: Character = {
           id: `h${Date.now()}`,
           name: currentState.tempCharacterName,
@@ -284,14 +354,17 @@ export const processCommand = (input: string) => {
           hp: 20 + cls.stats.con, maxHp: 20 + cls.stats.con,
           mp: cls.stats.skillSlots, maxMp: cls.stats.skillSlots,
           stats: cls.stats,
-          equipment: { weapon: null, armor: null, accessories: [] },
+          equipment: initEquip, // <--- Use the auto-equipped set
           isPlayerControlled: true,
           status: [],
-          unlockedSkills: [],
+          unlockedSkills: startingSkills,
+          atbTimer: 0
         };
+
         store.getState().addCharacter(newHero, cls.startingCredits);
-        cls.startingEquipment.forEach(id => store.getState().addToInventory(id));
+        // Add CONSUMABLES only to the bag
         cls.startingItems.forEach(id => store.getState().addToInventory(id));
+        
         store.getState().addLog(`Registered ${newHero.name}.`);
         if (store.getState().party.length < 3) store.getState().addLog(`Enter Name for Hero ${store.getState().party.length + 1}:`);
         else {
@@ -303,7 +376,6 @@ export const processCommand = (input: string) => {
     return;
   }
 
-  // Command Routing
   switch (command) {
     case 'n': case 's': case 'e': case 'w': case 'north': case 'south': case 'east': case 'west':
       cmdMove(command, currentState); break;
@@ -325,6 +397,13 @@ export const processCommand = (input: string) => {
       cmdOpen(args, currentState); break;
     case 'h': case 'help':
       cmdHelp(); break;
+    case 'save':
+      store.getState().saveGame();
+      break;
+    case 'load':
+      const loaded = store.getState().loadGame();
+      if (!loaded) store.getState().addLog("No save file found.");
+      break;
     case 'a': case 'attack': case 'kill': case 'hit':
       cmdCombatAction(command, args, currentState); 
       break;

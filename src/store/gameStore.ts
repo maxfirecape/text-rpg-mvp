@@ -7,14 +7,12 @@ import classesDataJson from '../data/classes.json';
 const classesData = classesDataJson as unknown as Class[];
 const getItem = (id: string | null) => itemsData.find(i => i.id === id) as Item | undefined;
 
-// --- DYNAMIC MATH ENGINE ---
 const calcVal = (formula: string, stats: Stats, lvl: number = 1): number => {
   try {
     let e = formula.toLowerCase();
     e = e.replace(/\[?str\]?/g, stats.str.toString()).replace(/\[?dex\]?/g, stats.dex.toString())
          .replace(/\[?con\]?/g, stats.con.toString()).replace(/\[?wis\]?/g, stats.wis.toString())
          .replace(/\[?lvl\]?/g, lvl.toString());
-    // Fixed: _m ignores unused variable warning
     e = e.replace(/(\d+)d(\d+)/g, (_m, c, s) => {
       let t = 0; for(let i=0; i<parseInt(c); i++) t += Math.floor(Math.random()*parseInt(s))+1; return t.toString();
     });
@@ -27,7 +25,9 @@ export interface GameState {
   isCombat: boolean; activeEnemies: Enemy[]; isInputLocked: boolean; activeDialogue: string | null;
   tempCharacterName: string | null; 
   lootedChests: string[];
-  
+  battleQueue: string[];
+  isGameOver: boolean;
+
   addLog: (m: string) => void;
   setRoom: (id: string) => void;
   setInputLock: (l: boolean) => void;
@@ -38,6 +38,10 @@ export interface GameState {
   equipItem: (idx: number, id: string) => void;
   unequipItem: (idx: number, s: string, i?: number) => void;
   setChestLooted: (id: string) => void;
+  resetGame: () => void;
+  saveGame: () => void; 
+  loadGame: () => boolean; 
+  getDerivedStats: (c: Character) => Stats; // <--- NEW HELPER
   
   startCombat: (e: Enemy[]) => void;
   performAction: (aIdx: number, sId: string, tIdx: number, type?: 'enemy'|'party') => void;
@@ -48,15 +52,86 @@ export const useGameStore = create<GameState>((set, get) => ({
   party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell', log: ["Welcome to Inertia.", "Enter Name for Hero 1:"], 
   isCombat: false, activeEnemies: [], isInputLocked: false, activeDialogue: null, tempCharacterName: null,
   lootedChests: [],
+  battleQueue: [],
+  isGameOver: false,
 
   addLog: (m) => set(s => ({ log: [...s.log, m] })),
   setRoom: (id) => set({ currentRoomId: id }),
   setInputLock: (l) => set({ isInputLocked: l }),
   setDialogue: (id) => set({ activeDialogue: id }),
   setTempName: (n) => set({ tempCharacterName: n }),
-  addCharacter: (c, cr) => set(s => ({ party: [...s.party, c], credits: s.credits + cr, tempCharacterName: null })),
+  addCharacter: (c, cr) => set(s => ({ party: [...s.party, { ...c, atbTimer: 3.5 }], credits: s.credits + cr, tempCharacterName: null })),
   addToInventory: (id) => set(s => ({ inventory: [...s.inventory, id] })),
   setChestLooted: (id) => set(s => ({ lootedChests: [...s.lootedChests, id] })),
+
+  resetGame: () => set({
+    party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell', 
+    log: ["Welcome to Inertia.", "Enter Name for Hero 1:"],
+    isCombat: false, activeEnemies: [], isInputLocked: false, activeDialogue: null, 
+    tempCharacterName: null, lootedChests: [], battleQueue: [], isGameOver: false
+  }),
+
+  saveGame: () => {
+    const s = get();
+    const data = {
+      party: s.party,
+      inventory: s.inventory,
+      credits: s.credits,
+      currentRoomId: s.currentRoomId,
+      lootedChests: s.lootedChests
+    };
+    try {
+        localStorage.setItem('rpg_save_v1', JSON.stringify(data));
+        set(state => ({ log: [...state.log, "Game Saved."] }));
+    } catch (e) {
+        console.error("Save failed", e);
+        set(state => ({ log: [...state.log, "Save Failed!"] }));
+    }
+  },
+
+  loadGame: () => {
+    const raw = localStorage.getItem('rpg_save_v1');
+    if (!raw) return false;
+    try {
+      const data = JSON.parse(raw);
+      set({
+        party: data.party,
+        inventory: data.inventory,
+        credits: data.credits,
+        currentRoomId: data.currentRoomId,
+        lootedChests: data.lootedChests || [],
+        log: ["Game Loaded.", `Welcome back to ${data.currentRoomId}.`],
+        isCombat: false, 
+        activeEnemies: [],
+        battleQueue: [],
+        isGameOver: false,
+        isInputLocked: false,
+        activeDialogue: null
+      });
+      return true;
+    } catch (e) {
+      console.error("Save file corrupted", e);
+      return false;
+    }
+  },
+
+  // --- NEW: Calculate Stats + Gear Bonuses ---
+  getDerivedStats: (c: Character) => {
+    const s = { ...c.stats };
+    const items = [c.equipment.weapon, c.equipment.armor, ...c.equipment.accessories];
+    items.forEach(id => {
+        if (!id) return;
+        const item = getItem(id);
+        if (item?.statBonus) {
+            if (item.statBonus.str) s.str += item.statBonus.str;
+            if (item.statBonus.dex) s.dex += item.statBonus.dex;
+            if (item.statBonus.con) s.con += item.statBonus.con;
+            if (item.statBonus.wis) s.wis += item.statBonus.wis;
+        }
+    });
+    return s;
+  },
+  // ------------------------------------------
 
   equipItem: (idx, id) => set(s => {
     const p = [...s.party]; const c = p[idx]; const item = getItem(id);
@@ -81,74 +156,66 @@ export const useGameStore = create<GameState>((set, get) => ({
     return { party: p, inventory: inv };
   }),
 
-  startCombat: (e) => set(s => ({ isCombat: true, activeEnemies: e.map(x => ({...x, atbTimer: Math.random()*5 + 5, state: 'idle'})), log: [...s.log, "COMBAT STARTED!"] })),
+  startCombat: (e) => set(s => ({ isCombat: true, activeEnemies: e.map(x => ({...x, atbTimer: Math.random()*5 + 5, state: 'idle'})), battleQueue: [], log: [...s.log, "COMBAT STARTED!"] })),
 
-  // --- FIXED TICK FUNCTION (IMMUTABLE UPDATES) ---
   tick: (dt) => set(s => {
-    if(!s.isCombat) return {};
+    if(!s.isCombat || s.isGameOver) return {}; 
 
-    // Helper: Process status duration immutably
+    const nextQueue = [...s.battleQueue];
+
     const processStatuses = (entity: any) => {
         if (entity.hp <= 0) return entity;
+        let newTimer = (entity.atbTimer || 0);
+        if (newTimer > 0) newTimer -= dt;
+
+        if (newTimer <= 0 && !nextQueue.includes(entity.id) && entity.isPlayerControlled) {
+            nextQueue.push(entity.id);
+        }
+
         const activeStatus = entity.status.filter((eff: StatusEffect) => {
             eff.duration -= dt;
             return eff.duration > 0;
         });
-        if (activeStatus.length !== entity.status.length) {
-            return { ...entity, status: activeStatus };
+        
+        if (activeStatus.length !== entity.status.length || newTimer !== entity.atbTimer) {
+            return { ...entity, status: activeStatus, atbTimer: Math.max(0, newTimer) };
         }
         return entity;
     };
 
-    // 1. Update Status Effects for everyone
     let nextParty = s.party.map(processStatuses);
     let nextEnemies = s.activeEnemies.map(processStatuses);
     const newLog = [...s.log];
 
-    // 2. Process Enemy AI
     nextEnemies = nextEnemies.map((e: Enemy) => {
-      // Skip dead or disabled enemies
-      if(e.hp <= 0 || e.status.some((x: StatusEffect) => ['stun','frozen','disabled'].includes(x.type))) {
-          return e;
-      }
+      if(e.hp <= 0 || e.status.some((x: StatusEffect) => ['stun','frozen','disabled'].includes(x.type))) return e;
 
       let newTimer = (e.atbTimer || 0) - dt;
       let newState = e.state;
 
-      // IDLE -> CHARGING
       if(e.state === 'idle' && newTimer <= 0) {
          newLog.push(`${e.name} readies weapon!`);
          newState = 'charging';
          newTimer = 5; 
       } 
-      // CHARGING -> ATTACK
       else if(e.state === 'charging' && newTimer <= 0) {
          const livingTargets = nextParty.filter((p: Character) => p.hp > 0);
-         
          if(livingTargets.length > 0) {
-           // Pick random target
            const targetIndex = Math.floor(Math.random() * livingTargets.length);
            const targetId = livingTargets[targetIndex].id;
-
-           // Calculate Enemy Damage Base
            const mult = 0.7 + Math.random()*0.4;
            const baseDmg = Math.floor(Math.random()*4)+1 + Math.floor(e.stats.str/2);
            
-           // Apply damage to the specific party member immutably
            nextParty = nextParty.map((p: Character) => {
                if (p.id !== targetId) return p;
-
-               // Calculate Reduction from Armor
                let reduct = 0;
                const arm = getItem(p.equipment.armor);
                if(arm?.defense) reduct += Math.random()*(arm.defense.max - arm.defense.min) + arm.defense.min;
                
-               // Check Evasion
                if(p.status.some((st: StatusEffect) => st.type === 'evade_up') && Math.random() > 0.5) {
                    newLog.push(`${e.name} attacks ${p.name} but MISSES!`);
                    return p;
                }
-
                const dmg = Math.max(1, Math.floor((baseDmg * mult) * (1 - reduct)));
                newLog.push(`${e.name} hits ${p.name} for ${dmg} DMG!`);
                return { ...p, hp: Math.max(0, p.hp - dmg) };
@@ -157,26 +224,47 @@ export const useGameStore = create<GameState>((set, get) => ({
          newState = 'idle';
          newTimer = Math.random()*15 + 5; 
       }
-
       return { ...e, atbTimer: newTimer, state: newState };
     });
 
-    return { party: nextParty, activeEnemies: nextEnemies, log: newLog };
+    if (nextParty.every(p => p.hp <= 0)) {
+        return { party: nextParty, activeEnemies: nextEnemies, log: [...newLog, "PARTY WIPED OUT!"], isGameOver: true };
+    }
+
+    return { party: nextParty, activeEnemies: nextEnemies, log: newLog, battleQueue: nextQueue };
   }),
 
   performAction: (aIdx, sId, tIdx, type='enemy') => {
     set(s => {
       const p = [...s.party]; const e = [...s.activeEnemies]; const actor = p[aIdx];
-      if(actor.hp <= 0) return { log: [...s.log, "Cannot act!"] };
+      
+      if(actor.hp <= 0) return { log: [...s.log, `${actor.name} is down!`] };
+      
+      if (s.battleQueue[0] !== actor.id) {
+          return { log: [...s.log, `It is not ${actor.name}'s turn!`] };
+      }
 
       let skill = skillsData.find(x => x.id === sId) as Skill | undefined;
+      
+      // --- UPDATED: Use Derived Stats for Calculations ---
+      const actorStats = get().getDerivedStats(actor);
+      // ---------------------------------------------------
+
       if(sId === 'attack') {
          skill = { id:'attack', name:'Attack', cost:0, type:'physical', formula: getItem(actor.equipment.weapon)?.damage || "[STR]+1d2", description:'' };
       }
 
       if(!skill) return { log: [...s.log, "Unknown skill"] };
+      if (sId !== 'attack' && !actor.unlockedSkills.includes(sId)) {
+        return { log: [...s.log, `${actor.name} does not know '${skill.name}'.`] };
+      }
       if(actor.mp < skill.cost) return { log: [...s.log, "Not enough SP"] };
+
       actor.mp -= skill.cost;
+      actor.atbTimer = 7;
+
+      const newQueue = [...s.battleQueue];
+      newQueue.shift();
 
       let logMsg = "";
       if(skill.type === 'buff') {
@@ -189,24 +277,28 @@ export const useGameStore = create<GameState>((set, get) => ({
          let amt = 0;
          if(skill.formula?.includes('%')) { 
             if(skill.id === 'max_revive') amt = t.maxHp;
-            else amt = Math.floor(t.maxHp * 0.5) + calcVal("2d4", actor.stats);
+            else amt = Math.floor(t.maxHp * 0.5) + calcVal("2d4", actorStats);
             if(t.hp <= 0) { t.hp = amt; logMsg = `${actor.name} revives ${t.name}!`; }
          } else {
-            amt = calcVal(skill.formula || "[WIS]", actor.stats, actor.level);
+            amt = calcVal(skill.formula || "[WIS]", actorStats, actor.level);
             t.hp = Math.min(t.maxHp, t.hp + amt);
             logMsg = `${actor.name} heals ${t.name} for ${amt}.`;
          }
       }
       else { 
          const t = e[tIdx];
-         if(!t || t.hp <= 0) return { log: [...s.log, "Target dead"] };
+         if(!t || t.hp <= 0) return { log: [...s.log, "Target is already dead."] };
          
-         let base = calcVal(skill.formula || "1d4", actor.stats, actor.level);
+         let base = calcVal(skill.formula || "1d4", actorStats, actor.level);
          if(skill.val) base = Math.floor(base * skill.val);
+
+         if (skill.type === 'physical') {
+             base = Math.ceil(base / 3);
+         }
+
          t.hp = Math.max(0, t.hp - base);
          logMsg = `${actor.name} hits ${t.name} for ${base}.`;
          
-         // Apply Status
          if(skill.status && Math.random() < (skill.chance || 1.0)) {
             t.status.push({ type: skill.status, duration: skill.duration || 5 });
             logMsg += ` ${skill.status.toUpperCase()}!`;
@@ -214,7 +306,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       if(e.every(x => x.hp <= 0)) {
-         // XP Logic
          const xpTotal = e.reduce((sum, en) => sum + en.xpReward, 0);
          const share = Math.floor(xpTotal / p.length);
          p.forEach(c => {
@@ -227,9 +318,9 @@ export const useGameStore = create<GameState>((set, get) => ({
                if(u) u.split(',').forEach((k:string)=> { if(!c.unlockedSkills.includes(k.trim())) c.unlockedSkills.push(k.trim()); });
             }
          });
-         return { activeEnemies: e, party: p, isCombat: false, log: [...s.log, logMsg, `VICTORY! +${xpTotal} XP`] };
+         return { activeEnemies: e, party: p, isCombat: false, battleQueue: [], log: [...s.log, logMsg, `VICTORY! +${xpTotal} XP`] };
       }
-      return { activeEnemies: e, party: p, log: [...s.log, logMsg] };
+      return { activeEnemies: e, party: p, battleQueue: newQueue, log: [...s.log, logMsg] };
     });
   }
 }));

@@ -1,4 +1,3 @@
-
 // 1. STATS
 export type Stats = {
   str: number;
@@ -73,6 +72,7 @@ export type Character = {
   isPlayerControlled: boolean;
   status: StatusEffect[];
   unlockedSkills: string[];
+  atbTimer: number; // For Cooldowns
 };
 
 // 5. CLASSES
@@ -83,6 +83,7 @@ export type Class = {
   startingEquipment: string[];
   startingItems: string[];
   startingCredits: number;
+  startingSkills?: string[]; // Optional initial skills
   unlocks: { [key: string]: string };
 };
 
@@ -104,11 +105,14 @@ export type Enemy = {
 
 // 7. INTERACTABLES
 export type Interactable = {
-  type?: 'npc';
+  type?: 'npc' | 'container' | 'door';
   name?: string;
   locked?: boolean;
-  loot?: string;
+  reqKey?: string;       // ID of item needed to unlock
+  loot?: string;         // Item ID inside
   message: string;
+  onOpen?: 'ambush';     // Event trigger
+  ambushEnemyId?: string;// Enemy ID to spawn
 };
 
 // 8. ROOMS

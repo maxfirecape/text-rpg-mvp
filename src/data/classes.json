@@ -6,6 +6,7 @@
     "startingEquipment": ["dual_knives", "clothes", "gloves", "boots", "lucky_charm"],
     "startingItems": ["hp_potion", "hp_potion", "hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick"],
     "startingCredits": 200,
+    "startingSkills": ["steal", "precision_strike"],
     "unlocks": {
       "2": "skeleton_key",
       "3": "double_strike",
@@ -21,6 +22,7 @@
     "startingEquipment": ["longsword", "clothes", "gloves", "boots", "lucky_charm"],
     "startingItems": ["hp_potion", "hp_potion", "hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion"],
     "startingCredits": 100,
+    "startingSkills": ["heavy_strike"],
     "unlocks": {
       "2": "evade_up",
       "3": "armor_up"
@@ -33,6 +35,7 @@
     "startingEquipment": ["staff", "clothes", "gloves", "boots", "lucky_charm"],
     "startingItems": ["hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion"],
     "startingCredits": 100,
+    "startingSkills": ["fire", "shock"],
     "unlocks": {
       "2": "flame_wall"
     }
@@ -44,6 +47,7 @@
     "startingEquipment": ["staff", "clothes", "gloves", "boots", "lucky_charm"],
     "startingItems": ["hp_potion", "hp_potion", "hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "phoenix_potion", "phoenix_potion", "tent"],
     "startingCredits": 100,
+    "startingSkills": ["heal", "revive"],
     "unlocks": {
       "2": "greater_revive, max_revive",
       "3": "greater_heal, group_rain"

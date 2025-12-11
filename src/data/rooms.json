@@ -8,23 +8,41 @@
       "west": "room_02_corridor"
     },
     "interactables": {
-      "door": { "locked": false, "message": "It's the cell door. Looks sturdy." },
+      "door": { 
+          "locked": true, 
+          "type": "door",
+          "message": "It's the cell door. It looks sturdy.",
+          "onOpen": "ambush",
+          "ambushEnemyId": "guard_01"
+      },
       "prisoner": { "type": "npc", "name": "Rex", "message": "He is staring at you, smirking." },
       "desk": { "message": "A typical desk. Nothing seems remarkable about it." },
       "bed": { "message": "These were not comfortable to sleep in last night." },
-      "toilet": { "message": "It’s excruciatingly cold, and uncomfortable to share with your cellmates." }
+      "toilet": { "message": "It’s excruciatingly cold." }
     }
   },
   {
     "id": "room_02_corridor",
     "name": "Prison Corridor",
-    "description": "You step over the bodies of the guards and into the prison block hallway. The prisoner across the room is beaming.",
+    "description": "You step over the bodies of the guards and into the prison block hallway.",
     "image": "https://placehold.co/600x400/2e1a1a/FFF?text=Prison+Corridor",
     "exits": {
       "east": "room_01_cell"
     },
     "interactables": {
-      "chest": { "locked": false, "loot": "lucky_charm", "message": "A wooden chest sits in the corner." }
+      "chest": { 
+          "type": "container",
+          "locked": false, 
+          "loot": "lucky_charm", 
+          "message": "A wooden chest sits in the corner." 
+      },
+      "cabinet": {
+          "type": "container",
+          "locked": true,
+          "reqKey": "skeleton_key",
+          "loot": "hp_potion",
+          "message": "A medical cabinet on the wall."
+      }
     }
   }
 ]
