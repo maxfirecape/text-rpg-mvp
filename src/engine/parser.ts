@@ -147,14 +147,12 @@ const cmdStats = (args: string, currentState: GameState) => {
   const target = targetIdx !== -1 ? currentState.party[targetIdx] : null;
   
   if (target) {
-    // --- UPDATED: USE DERIVED STATS FOR DISPLAY ---
     const derived = store.getState().getDerivedStats(target);
     store.getState().addLog(`--- ${target.name} (${target.classId.toUpperCase()}) ---`);
     store.getState().addLog(`LVL: ${target.level} | XP: ${target.xp}/${target.maxXp}`);
     store.getState().addLog(`HP: ${target.hp}/${target.maxHp} | SP: ${target.mp}/${target.maxMp}`);
     store.getState().addLog(`STR: ${derived.str} | DEX: ${derived.dex}`);
     store.getState().addLog(`CON: ${derived.con} | WIS: ${derived.wis}`);
-    // ---------------------------------------------
   } else {
     currentState.party.forEach((c: Character) => {
       store.getState().addLog(`[${c.name}] Lvl ${c.level} ${c.classId} - XP: ${c.xp}/${c.maxXp}`);
@@ -229,6 +227,7 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
   else if (['cast', 'c', 'use'].includes(command)) {
     let spellStr = cleanArgs;
     let targetStr = "";
+    // Separator logic
     if (cleanArgs.includes(" on ")) {
       const parts = cleanArgs.split(" on ");
       spellStr = parts[0];
@@ -242,7 +241,10 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
       if (tid === -1 && !targetStr) tid = actorIndex; 
       store.getState().performAction(actorIndex, skill.id, tid, 'party');
     } else {
-      const tid = resolveEnemyIndex(cleanArgs, currentState.activeEnemies);
+      // --- FIXED: USE targetStr INSTEAD OF cleanArgs ---
+      // If targetStr is empty ("cast fire"), resolveEnemyIndex("") defaults to first enemy.
+      // If targetStr is "guard a", it resolves correctly.
+      const tid = resolveEnemyIndex(targetStr, currentState.activeEnemies);
       store.getState().performAction(actorIndex, skill.id, tid, 'enemy');
     }
   }
@@ -335,16 +337,13 @@ export const processCommand = (input: string) => {
         // @ts-ignore
         const startingSkills = cls.startingSkills || [];
 
-        // --- UPDATED: AUTO-EQUIP LOGIC ---
         const initEquip = { weapon: null as string|null, armor: null as string|null, accessories: [] as string[] };
         cls.startingEquipment.forEach(id => {
             const item = findItem(id);
             if(item?.type === 'weapon') initEquip.weapon = id;
             else if(item?.type === 'armor') initEquip.armor = id;
             else if(item?.type === 'accessory') initEquip.accessories.push(id);
-            // Items are NOT added to inventory array if equipped
         });
-        // --------------------------------
 
         const newHero: Character = {
           id: `h${Date.now()}`,
@@ -354,7 +353,7 @@ export const processCommand = (input: string) => {
           hp: 20 + cls.stats.con, maxHp: 20 + cls.stats.con,
           mp: cls.stats.skillSlots, maxMp: cls.stats.skillSlots,
           stats: cls.stats,
-          equipment: initEquip, // <--- Use the auto-equipped set
+          equipment: initEquip, 
           isPlayerControlled: true,
           status: [],
           unlockedSkills: startingSkills,
@@ -362,7 +361,6 @@ export const processCommand = (input: string) => {
         };
 
         store.getState().addCharacter(newHero, cls.startingCredits);
-        // Add CONSUMABLES only to the bag
         cls.startingItems.forEach(id => store.getState().addToInventory(id));
         
         store.getState().addLog(`Registered ${newHero.name}.`);
