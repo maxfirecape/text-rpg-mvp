@@ -15,7 +15,7 @@
           "onOpen": "ambush",
           "ambushEnemyId": "guard_01"
       },
-      "prisoner": { "type": "npc", "name": "Rex", "message": "He is staring at you, smirking." },
+      "prisoner": { "type": "npc", "name": "Rex", "message": "He is staring at you, smirking, with eyes darkened by eye shadow and mascara." },
       "desk": { "message": "A typical desk. Nothing seems remarkable about it." },
       "bed": { "message": "These were not comfortable to sleep in last night." },
       "toilet": { "message": "It’s excruciatingly cold." }

@@ -27,3 +27,5 @@
   { "id": "greater_heal", "name": "Greater Heal", "cost": 2, "type": "heal", "formula": "[WIS] * 2", "description": "Heals target for [WIS] * 2.", "aliases": ["gh", "gheal"], "classes": ["cleric"] },
   { "id": "group_rain", "name": "Group Rain", "cost": 2, "type": "heal", "target": "party", "formula": "[WIS]*1.25", "duration": 10, "description": "Heals party [WIS]*1.25 over 10s.", "aliases": ["grouprain", "gr"], "classes": ["cleric"] }
 ]
+
+

@@ -412,7 +412,9 @@ export const processCommand = (input: string) => {
     }
     return;
   }
+
 //test12/11/25
+
   switch (command) {
     case 'n': case 's': case 'e': case 'w': case 'north': case 'south': case 'east': case 'west':
       cmdMove(command, currentState); break;
