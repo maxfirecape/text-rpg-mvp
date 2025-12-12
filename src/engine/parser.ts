@@ -145,7 +145,6 @@ const cmdInventory = () => {
 const cmdStats = (args: string, currentState: GameState) => {
   const targetIdx = resolvePartyIndex(args, currentState.party);
   const target = targetIdx !== -1 ? currentState.party[targetIdx] : null;
-  
   if (target) {
     const derived = store.getState().getDerivedStats(target);
     store.getState().addLog(`--- ${target.name} (${target.classId.toUpperCase()}) ---`);
@@ -197,6 +196,7 @@ const cmdUnequip = (args: string, currentState: GameState) => {
   }
 };
 
+// --- UPDATED: HANDLES ITEMS AND TARGETING ---
 const cmdCombatAction = (command: string, args: string, currentState: GameState) => {
   if (!currentState.isCombat) { store.getState().addLog("There is no one to fight."); return; }
   
@@ -227,25 +227,64 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
   else if (['cast', 'c', 'use'].includes(command)) {
     let spellStr = cleanArgs;
     let targetStr = "";
-    // Separator logic
     if (cleanArgs.includes(" on ")) {
       const parts = cleanArgs.split(" on ");
       spellStr = parts[0];
       targetStr = parts[1];
     }
-    const skill = findSkill(spellStr);
-    if (!skill) { store.getState().addLog("Unknown spell/skill."); return; }
 
-    if (skill.type === "heal" || skill.type === "buff" || skill.type === "revive") {
-      let tid = resolvePartyIndex(targetStr, currentState.party);
-      if (tid === -1 && !targetStr) tid = actorIndex; 
-      store.getState().performAction(actorIndex, skill.id, tid, 'party');
+    // 1. Try finding a Skill
+    let actionId = "";
+    const skill = findSkill(spellStr);
+    if (skill) {
+        actionId = skill.id;
     } else {
-      // --- FIXED: USE targetStr INSTEAD OF cleanArgs ---
-      // If targetStr is empty ("cast fire"), resolveEnemyIndex("") defaults to first enemy.
-      // If targetStr is "guard a", it resolves correctly.
-      const tid = resolveEnemyIndex(targetStr, currentState.activeEnemies);
-      store.getState().performAction(actorIndex, skill.id, tid, 'enemy');
+        // 2. Try finding an Item
+        const item = findItem(spellStr);
+        if (item) actionId = item.id;
+    }
+
+    if (!actionId) { store.getState().addLog("Unknown skill or item."); return; }
+
+    // Re-verify the object to determine type (Healing vs Damage) logic
+    // (This is a simplified check. The store handles the 'type' field, but we need to know who to target)
+    // We assume if targetStr is set, we use it. If not, defaults apply.
+    
+    // Attempt to resolve as Party Member first
+    const partyTargetIdx = resolvePartyIndex(targetStr, currentState.party);
+    if (partyTargetIdx !== -1) {
+        store.getState().performAction(actorIndex, actionId, partyTargetIdx, 'party');
+        return;
+    }
+
+    // Attempt to resolve as Enemy
+    const enemyTargetIdx = resolveEnemyIndex(targetStr || cleanArgs, currentState.activeEnemies);
+    // Note: If no targetStr, resolveEnemyIndex defaults to 0 (first enemy). 
+    // This implies we default to Offensive if target not found in party. 
+    // For Self-Heal, user must type "use potion on [self]".
+    
+    // To support "use potion" = self, we'd need more logic here. 
+    // For now, let's allow the store to decide or default to enemy for attack skills.
+    // Actually, for Items like Potion, if no target is specified, it might be safer to default to SELF (actorIndex).
+    
+    if (skill && (skill.type === 'heal' || skill.type === 'buff' || skill.type === 'revive')) {
+         store.getState().performAction(actorIndex, actionId, actorIndex, 'party');
+    } 
+    else if (!skill && actionId) {
+        // It's an item. Check if it's a potion-like effect string?
+        // We can't see 'effect' easily here without findItem again.
+        const it = findItem(actionId);
+        if (it?.effect?.includes('heal') || it?.effect?.includes('restore')) {
+             // Default to self if no target
+             const t = targetStr ? resolvePartyIndex(targetStr, currentState.party) : actorIndex;
+             const finalT = t === -1 ? actorIndex : t;
+             store.getState().performAction(actorIndex, actionId, finalT, 'party');
+        } else {
+             store.getState().performAction(actorIndex, actionId, enemyTargetIdx, 'enemy');
+        }
+    }
+    else {
+        store.getState().performAction(actorIndex, actionId, enemyTargetIdx, 'enemy');
     }
   }
 };

@@ -41,7 +41,7 @@ export interface GameState {
   resetGame: () => void;
   saveGame: () => void; 
   loadGame: () => boolean; 
-  getDerivedStats: (c: Character) => Stats; // <--- NEW HELPER
+  getDerivedStats: (c: Character) => Stats;
   
   startCombat: (e: Enemy[]) => void;
   performAction: (aIdx: number, sId: string, tIdx: number, type?: 'enemy'|'party') => void;
@@ -115,7 +115,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
-  // --- NEW: Calculate Stats + Gear Bonuses ---
   getDerivedStats: (c: Character) => {
     const s = { ...c.stats };
     const items = [c.equipment.weapon, c.equipment.armor, ...c.equipment.accessories];
@@ -131,7 +130,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
     return s;
   },
-  // ------------------------------------------
 
   equipItem: (idx, id) => set(s => {
     const p = [...s.party]; const c = p[idx]; const item = getItem(id);
@@ -237,48 +235,102 @@ export const useGameStore = create<GameState>((set, get) => ({
   performAction: (aIdx, sId, tIdx, type='enemy') => {
     set(s => {
       const p = [...s.party]; const e = [...s.activeEnemies]; const actor = p[aIdx];
-      
+      let inv = [...s.inventory];
+
       if(actor.hp <= 0) return { log: [...s.log, `${actor.name} is down!`] };
-      
       if (s.battleQueue[0] !== actor.id) {
           return { log: [...s.log, `It is not ${actor.name}'s turn!`] };
       }
 
-      let skill = skillsData.find(x => x.id === sId) as Skill | undefined;
+      // --- 1. RESOLVE ACTION (ITEM vs SKILL) ---
+      let skill: Skill | undefined;
+      let usedItem = false;
+
+      // Check if sId is actually an Item ID
+      const itemAction = getItem(sId);
       
-      // --- UPDATED: Use Derived Stats for Calculations ---
+      if (itemAction && itemAction.type === 'consumable') {
+          // VALIDATE ITEM
+          if (!inv.includes(sId)) return { log: [...s.log, "You don't have that!"] };
+          
+          // MOCK ITEM AS SKILL
+          usedItem = true;
+          skill = { 
+              id: itemAction.id, 
+              name: itemAction.name, 
+              cost: 0, 
+              type: 'utility', 
+              description: itemAction.description 
+          };
+
+          // MAP ITEM EFFECTS TO SKILL LOGIC
+          if (itemAction.effect) {
+             if (itemAction.effect.startsWith('heal_')) {
+                 skill.type = 'heal';
+                 skill.formula = itemAction.effect.replace('heal_', '');
+             } else if (itemAction.effect === 'restore_skill') {
+                 skill.type = 'restore_mp';
+                 skill.formula = '1d4'; // Standard SP restore
+             } else if (itemAction.effect === 'revive') {
+                 skill.type = 'revive';
+                 skill.formula = '50%';
+             } else if (itemAction.effect === 'full_rest') {
+                 skill.type = 'heal';
+                 skill.formula = '100%'; // Full heal logic can be added
+             }
+          }
+      } else {
+          // STANDARD SKILL
+          skill = skillsData.find(x => x.id === sId) as Skill | undefined;
+          if(sId === 'attack') {
+             skill = { id:'attack', name:'Attack', cost:0, type:'physical', formula: getItem(actor.equipment.weapon)?.damage || "[STR]+1d2", description:'' };
+          }
+      }
+
+      if(!skill) return { log: [...s.log, "Unknown skill or item."] };
+      
+      // Check MP only if it's NOT an item
+      if (!usedItem) {
+          if (sId !== 'attack' && !actor.unlockedSkills.includes(sId)) {
+             return { log: [...s.log, `${actor.name} does not know '${skill.name}'.`] };
+          }
+          if(actor.mp < skill.cost) return { log: [...s.log, "Not enough SP"] };
+          actor.mp -= skill.cost;
+      } else {
+          // CONSUME ITEM
+          const itemIdx = inv.indexOf(sId);
+          if (itemIdx > -1) inv.splice(itemIdx, 1);
+      }
+
       const actorStats = get().getDerivedStats(actor);
-      // ---------------------------------------------------
-
-      if(sId === 'attack') {
-         skill = { id:'attack', name:'Attack', cost:0, type:'physical', formula: getItem(actor.equipment.weapon)?.damage || "[STR]+1d2", description:'' };
-      }
-
-      if(!skill) return { log: [...s.log, "Unknown skill"] };
-      if (sId !== 'attack' && !actor.unlockedSkills.includes(sId)) {
-        return { log: [...s.log, `${actor.name} does not know '${skill.name}'.`] };
-      }
-      if(actor.mp < skill.cost) return { log: [...s.log, "Not enough SP"] };
-
-      actor.mp -= skill.cost;
-      actor.atbTimer = 7;
+      actor.atbTimer = 7; // Reset Turn
 
       const newQueue = [...s.battleQueue];
       newQueue.shift();
 
+      // --- 2. EXECUTE EFFECT ---
       let logMsg = "";
+      
       if(skill.type === 'buff') {
          const t = type==='party' ? p[tIdx] : actor; 
          t.status.push({ type: skill.name, duration: skill.duration || 10, val: skill.val, stat: skill.stat });
-         logMsg = `${actor.name} casts ${skill.name} on ${t.name}.`;
+         logMsg = `${actor.name} uses ${skill.name} on ${t.name}.`;
+      }
+      // --- NEW: RESTORE MP ---
+      else if(skill.type === 'restore_mp') {
+         const t = p[tIdx];
+         const amt = calcVal(skill.formula || "1", actorStats, actor.level);
+         t.mp = Math.min(t.maxMp, t.mp + amt);
+         logMsg = `${actor.name} restores ${amt} SP to ${t.name}.`;
       }
       else if(skill.type === 'heal' || skill.type === 'revive') {
          const t = p[tIdx];
          let amt = 0;
          if(skill.formula?.includes('%')) { 
-            if(skill.id === 'max_revive') amt = t.maxHp;
+            if(skill.id === 'max_revive' || skill.formula === '100%') amt = t.maxHp;
             else amt = Math.floor(t.maxHp * 0.5) + calcVal("2d4", actorStats);
             if(t.hp <= 0) { t.hp = amt; logMsg = `${actor.name} revives ${t.name}!`; }
+            else { t.hp = Math.min(t.maxHp, t.hp + amt); logMsg = `${actor.name} heals ${t.name}.`; }
          } else {
             amt = calcVal(skill.formula || "[WIS]", actorStats, actor.level);
             t.hp = Math.min(t.maxHp, t.hp + amt);
@@ -318,9 +370,9 @@ export const useGameStore = create<GameState>((set, get) => ({
                if(u) u.split(',').forEach((k:string)=> { if(!c.unlockedSkills.includes(k.trim())) c.unlockedSkills.push(k.trim()); });
             }
          });
-         return { activeEnemies: e, party: p, isCombat: false, battleQueue: [], log: [...s.log, logMsg, `VICTORY! +${xpTotal} XP`] };
+         return { activeEnemies: e, party: p, inventory: inv, isCombat: false, battleQueue: [], log: [...s.log, logMsg, `VICTORY! +${xpTotal} XP`] };
       }
-      return { activeEnemies: e, party: p, battleQueue: newQueue, log: [...s.log, logMsg] };
+      return { activeEnemies: e, party: p, inventory: inv, battleQueue: newQueue, log: [...s.log, logMsg] };
     });
   }
 }));
