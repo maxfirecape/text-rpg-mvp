@@ -196,7 +196,6 @@ const cmdUnequip = (args: string, currentState: GameState) => {
   }
 };
 
-// --- UPDATED: HANDLES ITEMS AND TARGETING ---
 const cmdCombatAction = (command: string, args: string, currentState: GameState) => {
   if (!currentState.isCombat) { store.getState().addLog("There is no one to fight."); return; }
   
@@ -233,49 +232,34 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
       targetStr = parts[1];
     }
 
-    // 1. Try finding a Skill
     let actionId = "";
     const skill = findSkill(spellStr);
     if (skill) {
         actionId = skill.id;
     } else {
-        // 2. Try finding an Item
         const item = findItem(spellStr);
         if (item) actionId = item.id;
     }
 
     if (!actionId) { store.getState().addLog("Unknown skill or item."); return; }
 
-    // Re-verify the object to determine type (Healing vs Damage) logic
-    // (This is a simplified check. The store handles the 'type' field, but we need to know who to target)
-    // We assume if targetStr is set, we use it. If not, defaults apply.
-    
-    // Attempt to resolve as Party Member first
     const partyTargetIdx = resolvePartyIndex(targetStr, currentState.party);
     if (partyTargetIdx !== -1) {
         store.getState().performAction(actorIndex, actionId, partyTargetIdx, 'party');
         return;
     }
 
-    // Attempt to resolve as Enemy
-    const enemyTargetIdx = resolveEnemyIndex(targetStr || cleanArgs, currentState.activeEnemies);
-    // Note: If no targetStr, resolveEnemyIndex defaults to 0 (first enemy). 
-    // This implies we default to Offensive if target not found in party. 
-    // For Self-Heal, user must type "use potion on [self]".
-    
-    // To support "use potion" = self, we'd need more logic here. 
-    // For now, let's allow the store to decide or default to enemy for attack skills.
-    // Actually, for Items like Potion, if no target is specified, it might be safer to default to SELF (actorIndex).
+    // --- FIX 5: TARGETING LOGIC ---
+    // If targetStr is provided, look for that enemy.
+    // If targetStr is EMPTY (e.g. "cast fire"), default to first enemy (index 0).
+    const enemyTargetIdx = resolveEnemyIndex(targetStr || "", currentState.activeEnemies);
     
     if (skill && (skill.type === 'heal' || skill.type === 'buff' || skill.type === 'revive')) {
          store.getState().performAction(actorIndex, actionId, actorIndex, 'party');
     } 
     else if (!skill && actionId) {
-        // It's an item. Check if it's a potion-like effect string?
-        // We can't see 'effect' easily here without findItem again.
         const it = findItem(actionId);
         if (it?.effect?.includes('heal') || it?.effect?.includes('restore')) {
-             // Default to self if no target
              const t = targetStr ? resolvePartyIndex(targetStr, currentState.party) : actorIndex;
              const finalT = t === -1 ? actorIndex : t;
              store.getState().performAction(actorIndex, actionId, finalT, 'party');
@@ -288,6 +272,33 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
     }
   }
 };
+
+// --- FIX 3: USE ITEM (Out of Combat) ---
+const cmdUse = (args: string, currentState: GameState) => {
+    // If in combat, route to combat logic
+    if (currentState.isCombat) {
+        cmdCombatAction('use', args, currentState);
+        return;
+    }
+
+    // Out of combat usage
+    const parts = args.split(" on ");
+    const itemName = parts[0];
+    const targetName = parts[1];
+
+    const item = findItem(itemName);
+    if (!item) { store.getState().addLog("Unknown item."); return; }
+
+    // Resolve target (default to first party member if none specified)
+    let tIdx = 0;
+    if (targetName) {
+        tIdx = resolvePartyIndex(targetName, currentState.party);
+        if (tIdx === -1) { store.getState().addLog("Target not found."); return; }
+    }
+
+    store.getState().useItem(item.id, tIdx);
+};
+// ---------------------------------------
 
 const cmdOpen = (args: string, currentState: GameState) => {
   const room = getRoom(currentState.currentRoomId);
@@ -368,10 +379,24 @@ export const processCommand = (input: string) => {
   if (currentState.party.length < 3) {
     if (!currentState.tempCharacterName) {
       if (clean.length < 2) { store.getState().addLog("Name too short."); return; }
+      
+      // --- FIX 4: DUPLICATE NAME CHECK ---
+      if (currentState.party.some(c => c.name.toLowerCase() === clean.toLowerCase())) {
+          store.getState().addLog("Name already taken."); 
+          return;
+      }
+      // -----------------------------------
+
       store.getState().setTempName(clean);
       store.getState().addLog(`Welcome, ${clean}. Choose Class: [rogue], [fighter], [wizard], [cleric]`);
     } else {
-      const cls = classesData.find(c => c.id === command || c.name.toLowerCase() === command);
+      // --- FIX 1: ABBREVIATIONS ---
+      const aliasMap: {[key: string]: string} = { 'f': 'fighter', 'r': 'rogue', 'w': 'wizard', 'c': 'cleric' };
+      const resolvedClass = aliasMap[command] || command;
+      
+      const cls = classesData.find(c => c.id === resolvedClass || c.name.toLowerCase() === resolvedClass);
+      // ----------------------------
+
       if (cls) {
         // @ts-ignore
         const startingSkills = cls.startingSkills || [];
@@ -413,8 +438,6 @@ export const processCommand = (input: string) => {
     return;
   }
 
-//test12/11/25
-
   switch (command) {
     case 'n': case 's': case 'e': case 'w': case 'north': case 'south': case 'east': case 'west':
       cmdMove(command, currentState); break;
@@ -446,8 +469,11 @@ export const processCommand = (input: string) => {
     case 'a': case 'attack': case 'kill': case 'hit':
       cmdCombatAction(command, args, currentState); 
       break;
-    case 'c': case 'cast': case 'use':
+    case 'c': case 'cast': 
       cmdCombatAction(command, args, currentState); 
+      break;
+    case 'use': // --- UPDATED TO USE NEW HANDLER ---
+      cmdUse(args, currentState);
       break;
     default:
       store.getState().addLog("I don't know how to do that.");

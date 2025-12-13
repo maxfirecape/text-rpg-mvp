@@ -37,6 +37,7 @@ export interface GameState {
   addToInventory: (id: string) => void;
   equipItem: (idx: number, id: string) => void;
   unequipItem: (idx: number, s: string, i?: number) => void;
+  useItem: (itemId: string, targetIdx?: number) => void; // <--- NEW: Out-of-Combat Use
   setChestLooted: (id: string) => void;
   resetGame: () => void;
   saveGame: () => void; 
@@ -154,6 +155,36 @@ export const useGameStore = create<GameState>((set, get) => ({
     return { party: p, inventory: inv };
   }),
 
+  // --- NEW: USE ITEM (Out of Combat) ---
+  useItem: (itemId, targetIdx = 0) => set(s => {
+      const inv = [...s.inventory];
+      const idx = inv.indexOf(itemId);
+      if (idx === -1) return { log: [...s.log, "You don't have that."] };
+
+      const item = getItem(itemId);
+      if (!item || item.type !== 'consumable') return { log: [...s.log, "You can't use that."] };
+
+      const p = [...s.party];
+      const target = p[targetIdx];
+      
+      let msg = `Used ${item.name}.`;
+      
+      // Basic Effects logic
+      if (item.effect?.startsWith('heal_')) {
+          const formula = item.effect.replace('heal_', '');
+          const val = calcVal(formula, target.stats, target.level);
+          target.hp = Math.min(target.maxHp, target.hp + val);
+          msg = `Healed ${target.name} for ${val} HP.`;
+      } else if (item.effect === 'restore_skill') {
+          target.mp = Math.min(target.maxMp, target.mp + 2); // Simple logic
+          msg = `Restored SP to ${target.name}.`;
+      }
+
+      inv.splice(idx, 1);
+      return { party: p, inventory: inv, log: [...s.log, msg] };
+  }),
+  // -------------------------------------
+
   startCombat: (e) => set(s => ({ isCombat: true, activeEnemies: e.map(x => ({...x, atbTimer: Math.random()*5 + 5, state: 'idle'})), battleQueue: [], log: [...s.log, "COMBAT STARTED!"] })),
 
   tick: (dt) => set(s => {
@@ -242,18 +273,13 @@ export const useGameStore = create<GameState>((set, get) => ({
           return { log: [...s.log, `It is not ${actor.name}'s turn!`] };
       }
 
-      // --- 1. RESOLVE ACTION (ITEM vs SKILL) ---
       let skill: Skill | undefined;
       let usedItem = false;
 
-      // Check if sId is actually an Item ID
       const itemAction = getItem(sId);
       
       if (itemAction && itemAction.type === 'consumable') {
-          // VALIDATE ITEM
           if (!inv.includes(sId)) return { log: [...s.log, "You don't have that!"] };
-          
-          // MOCK ITEM AS SKILL
           usedItem = true;
           skill = { 
               id: itemAction.id, 
@@ -262,25 +288,19 @@ export const useGameStore = create<GameState>((set, get) => ({
               type: 'utility', 
               description: itemAction.description 
           };
-
-          // MAP ITEM EFFECTS TO SKILL LOGIC
           if (itemAction.effect) {
              if (itemAction.effect.startsWith('heal_')) {
                  skill.type = 'heal';
                  skill.formula = itemAction.effect.replace('heal_', '');
              } else if (itemAction.effect === 'restore_skill') {
                  skill.type = 'restore_mp';
-                 skill.formula = '1d4'; // Standard SP restore
+                 skill.formula = '1d4'; 
              } else if (itemAction.effect === 'revive') {
                  skill.type = 'revive';
                  skill.formula = '50%';
-             } else if (itemAction.effect === 'full_rest') {
-                 skill.type = 'heal';
-                 skill.formula = '100%'; // Full heal logic can be added
              }
           }
       } else {
-          // STANDARD SKILL
           skill = skillsData.find(x => x.id === sId) as Skill | undefined;
           if(sId === 'attack') {
              skill = { id:'attack', name:'Attack', cost:0, type:'physical', formula: getItem(actor.equipment.weapon)?.damage || "[STR]+1d2", description:'' };
@@ -289,7 +309,6 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       if(!skill) return { log: [...s.log, "Unknown skill or item."] };
       
-      // Check MP only if it's NOT an item
       if (!usedItem) {
           if (sId !== 'attack' && !actor.unlockedSkills.includes(sId)) {
              return { log: [...s.log, `${actor.name} does not know '${skill.name}'.`] };
@@ -297,18 +316,16 @@ export const useGameStore = create<GameState>((set, get) => ({
           if(actor.mp < skill.cost) return { log: [...s.log, "Not enough SP"] };
           actor.mp -= skill.cost;
       } else {
-          // CONSUME ITEM
           const itemIdx = inv.indexOf(sId);
           if (itemIdx > -1) inv.splice(itemIdx, 1);
       }
 
       const actorStats = get().getDerivedStats(actor);
-      actor.atbTimer = 7; // Reset Turn
+      actor.atbTimer = 7; 
 
       const newQueue = [...s.battleQueue];
       newQueue.shift();
 
-      // --- 2. EXECUTE EFFECT ---
       let logMsg = "";
       
       if(skill.type === 'buff') {
@@ -316,7 +333,6 @@ export const useGameStore = create<GameState>((set, get) => ({
          t.status.push({ type: skill.name, duration: skill.duration || 10, val: skill.val, stat: skill.stat });
          logMsg = `${actor.name} uses ${skill.name} on ${t.name}.`;
       }
-      // --- NEW: RESTORE MP ---
       else if(skill.type === 'restore_mp') {
          const t = p[tIdx];
          const amt = calcVal(skill.formula || "1", actorStats, actor.level);
@@ -338,8 +354,11 @@ export const useGameStore = create<GameState>((set, get) => ({
          }
       }
       else { 
+         // --- FIX 5: TARGET VALIDATION ---
          const t = e[tIdx];
-         if(!t || t.hp <= 0) return { log: [...s.log, "Target is already dead."] };
+         if (!t) return { log: [...s.log, "Target not found."] };
+         if (t.hp <= 0) return { log: [...s.log, "Target is already dead."] };
+         // --------------------------------
          
          let base = calcVal(skill.formula || "1d4", actorStats, actor.level);
          if(skill.val) base = Math.floor(base * skill.val);
