@@ -37,7 +37,7 @@ export interface GameState {
   addToInventory: (id: string) => void;
   equipItem: (idx: number, id: string) => void;
   unequipItem: (idx: number, s: string, i?: number) => void;
-  useItem: (itemId: string, targetIdx?: number) => void; // <--- NEW: Out-of-Combat Use
+  useItem: (itemId: string, targetIdx?: number) => void;
   setChestLooted: (id: string) => void;
   resetGame: () => void;
   saveGame: () => void; 
@@ -155,7 +155,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     return { party: p, inventory: inv };
   }),
 
-  // --- NEW: USE ITEM (Out of Combat) ---
   useItem: (itemId, targetIdx = 0) => set(s => {
       const inv = [...s.inventory];
       const idx = inv.indexOf(itemId);
@@ -169,21 +168,19 @@ export const useGameStore = create<GameState>((set, get) => ({
       
       let msg = `Used ${item.name}.`;
       
-      // Basic Effects logic
       if (item.effect?.startsWith('heal_')) {
           const formula = item.effect.replace('heal_', '');
           const val = calcVal(formula, target.stats, target.level);
           target.hp = Math.min(target.maxHp, target.hp + val);
           msg = `Healed ${target.name} for ${val} HP.`;
       } else if (item.effect === 'restore_skill') {
-          target.mp = Math.min(target.maxMp, target.mp + 2); // Simple logic
+          target.mp = Math.min(target.maxMp, target.mp + 2);
           msg = `Restored SP to ${target.name}.`;
       }
 
       inv.splice(idx, 1);
       return { party: p, inventory: inv, log: [...s.log, msg] };
   }),
-  // -------------------------------------
 
   startCombat: (e) => set(s => ({ isCombat: true, activeEnemies: e.map(x => ({...x, atbTimer: Math.random()*5 + 5, state: 'idle'})), battleQueue: [], log: [...s.log, "COMBAT STARTED!"] })),
 
@@ -191,8 +188,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     if(!s.isCombat || s.isGameOver) return {}; 
 
     const nextQueue = [...s.battleQueue];
+    let newLog = [...s.log];
 
-    const processStatuses = (entity: any) => {
+    const processEntityTick = (entity: any) => {
         if (entity.hp <= 0) return entity;
         let newTimer = (entity.atbTimer || 0);
         if (newTimer > 0) newTimer -= dt;
@@ -201,20 +199,27 @@ export const useGameStore = create<GameState>((set, get) => ({
             nextQueue.push(entity.id);
         }
 
+        // --- UPDATED: CONSTANT DoT (-1 per tick per status) ---
+        const dotEffects = entity.status.filter((s: StatusEffect) => ['burn', 'poison'].includes(s.type));
+        if (dotEffects.length > 0) {
+            const dmg = dotEffects.length; // 1 dmg per active effect
+            entity.hp = Math.max(0, entity.hp - dmg);
+        }
+        // ------------------------------------------------------
+
         const activeStatus = entity.status.filter((eff: StatusEffect) => {
             eff.duration -= dt;
             return eff.duration > 0;
         });
         
-        if (activeStatus.length !== entity.status.length || newTimer !== entity.atbTimer) {
+        if (activeStatus.length !== entity.status.length || newTimer !== entity.atbTimer || dotEffects.length > 0) {
             return { ...entity, status: activeStatus, atbTimer: Math.max(0, newTimer) };
         }
         return entity;
     };
 
-    let nextParty = s.party.map(processStatuses);
-    let nextEnemies = s.activeEnemies.map(processStatuses);
-    const newLog = [...s.log];
+    let nextParty = s.party.map(processEntityTick);
+    let nextEnemies = s.activeEnemies.map(processEntityTick);
 
     nextEnemies = nextEnemies.map((e: Enemy) => {
       if(e.hp <= 0 || e.status.some((x: StatusEffect) => ['stun','frozen','disabled'].includes(x.type))) return e;
@@ -260,7 +265,12 @@ export const useGameStore = create<GameState>((set, get) => ({
         return { party: nextParty, activeEnemies: nextEnemies, log: [...newLog, "PARTY WIPED OUT!"], isGameOver: true };
     }
 
-    return { party: nextParty, activeEnemies: nextEnemies, log: newLog, battleQueue: nextQueue };
+    const cleanQueue = nextQueue.filter(qid => {
+        const c = nextParty.find(p => p.id === qid);
+        return c && c.hp > 0;
+    });
+
+    return { party: nextParty, activeEnemies: nextEnemies, log: newLog, battleQueue: cleanQueue };
   }),
 
   performAction: (aIdx, sId, tIdx, type='enemy') => {
@@ -354,13 +364,17 @@ export const useGameStore = create<GameState>((set, get) => ({
          }
       }
       else { 
-         // --- FIX 5: TARGET VALIDATION ---
          const t = e[tIdx];
          if (!t) return { log: [...s.log, "Target not found."] };
          if (t.hp <= 0) return { log: [...s.log, "Target is already dead."] };
-         // --------------------------------
          
-         let base = calcVal(skill.formula || "1d4", actorStats, actor.level);
+         let formula = skill.formula;
+         if (skill.type === 'physical' && !formula) {
+             const weapon = getItem(actor.equipment.weapon);
+             formula = weapon?.damage || "[STR]+1d2";
+         }
+
+         let base = calcVal(formula || "1d4", actorStats, actor.level);
          if(skill.val) base = Math.floor(base * skill.val);
 
          if (skill.type === 'physical') {

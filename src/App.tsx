@@ -26,18 +26,15 @@ function App() {
 
   const currentRoom = roomsData.find(r => r.id === currentRoomId);
 
-  // --- GAME LOOP ---
   useEffect(() => {
     const interval = setInterval(() => tick(1), 1000);
     return () => clearInterval(interval);
   }, [tick]);
 
-  // --- AUTO SCROLL ---
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [log]);
 
-  // --- AUDIO ---
   useEffect(() => {
     const audio = audioRef.current;
     audio.volume = 0.4;
@@ -57,13 +54,14 @@ function App() {
   };
 
   const renderEnemyBars = () => {
-    return activeEnemies.map((enemy) => (
-      <div key={enemy.id} style={{ width: '100%', marginBottom: '10px', opacity: enemy.hp <= 0 ? 0.3 : 1 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#ffaaaa' }}>
-          <span>{enemy.name} {enemy.hp <= 0 && "(DEAD)"}</span>
+    return activeEnemies.map((enemy, index) => (
+      <div key={enemy.id} style={{ width: '100%', marginBottom: '6px', opacity: enemy.hp <= 0 ? 0.3 : 1 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#ffaaaa' }}>
+          {/* ADDED INDEX INDICATOR (1), (2), (3) */}
+          <span>{enemy.name} <span style={{color:'cyan'}}>({index + 1})</span> {enemy.hp <= 0 && "(DEAD)"}</span>
           <span>{enemy.hp}/{enemy.maxHp}</span>
         </div>
-        <div style={{ width: '100%', height: '10px', background: '#330000', border: '1px solid red' }}>
+        <div style={{ width: '100%', height: '6px', background: '#330000', border: '1px solid red' }}>
           <div style={{ width: `${(enemy.hp / enemy.maxHp) * 100}%`, height: '100%', background: 'red', transition: 'width 0.2s' }}></div>
         </div>
         <div style={{ display: 'flex', gap: '5px', marginTop:'2px' }}>
@@ -77,194 +75,170 @@ function App() {
   };
 
   const renderContextPanel = () => {
-    // 1. BATTLE MODE
     if (isCombat) {
       const activeCharId = battleQueue[0];
       const activeChar = party.find(p => p.id === activeCharId);
       
-      if (!activeChar) {
-        return <div style={{ color: '#888', fontStyle: 'italic' }}>Wait...</div>;
-      }
+      if (!activeChar) return <div style={{ color: '#666', fontStyle: 'italic', fontSize:'0.9em' }}>Waiting for turn...</div>;
 
       return (
         <div>
-          <h3 style={{ color: 'var(--sys-cyan)', margin: '0 0 10px 0', borderBottom:'1px solid #333' }}>
-            ACTION: {activeChar.name.toUpperCase()}
-          </h3>
-          
-          <div style={{ marginBottom: '15px' }}>
-            <div style={{ fontWeight:'bold', color:'white' }}>BASIC</div>
-            <div style={{ fontSize:'0.9em', color:'#ccc' }}>Attack (a)</div>
-            <div style={{ fontSize:'0.9em', color:'#ccc' }}>Defend (d) - <span style={{color:'#666'}}>Not Impl</span></div>
+          <h4 style={{ color: 'var(--sys-cyan)', margin: '0 0 5px 0', borderBottom:'1px solid #333' }}>
+            ACT: {activeChar.name.toUpperCase()}
+          </h4>
+          <div style={{ marginBottom: '10px' }}>
+            <div style={{ fontSize:'0.85em', color:'#ccc' }}>Attack (a)</div>
+            <div style={{ fontSize:'0.85em', color:'#ccc' }}>Defend (d)</div>
           </div>
-
           <div>
-            <div style={{ fontWeight:'bold', color:'white' }}>SKILLS</div>
-            {activeChar.unlockedSkills.length === 0 && <div style={{color:'#666'}}>No skills.</div>}
+            <div style={{ fontWeight:'bold', color:'white', fontSize:'0.8em' }}>SKILLS</div>
             {activeChar.unlockedSkills.map(sid => {
                 // @ts-ignore
                 const sk = skillsData.find(s => s.id === sid);
                 return sk ? (
-                  <div key={sid} style={{ fontSize:'0.9em', color:'#00eaff', marginBottom:'4px' }}>
-                     {sk.name} <span style={{color:'#888'}}>({sk.aliases ? sk.aliases[0] : '?'})</span>
-                     <span style={{float:'right', color:'#ff00ff'}}>{sk.cost} SP</span>
+                  <div key={sid} style={{ fontSize:'0.85em', color:'#00eaff' }}>
+                     {sk.name} <span style={{color:'#888', fontSize:'0.8em'}}>({sk.cost} SP)</span>
                   </div>
                 ) : null;
             })}
           </div>
-
-          {/* NEXT UP DISPLAY */}
           {battleQueue.length > 1 && (
-              <div style={{ marginTop:'15px', borderTop:'1px solid #333', paddingTop:'5px' }}>
-                  <div style={{fontSize:'0.7em', color:'#888'}}>NEXT:</div>
-                  {battleQueue.slice(1).map(qid => {
-                      const c = party.find(p => p.id === qid);
-                      return <div key={qid} style={{fontSize:'0.8em', color:'#666'}}>{c?.name}</div>
-                  })}
+              <div style={{ marginTop:'10px', borderTop:'1px solid #333', paddingTop:'2px' }}>
+                  <div style={{fontSize:'0.7em', color:'#888'}}>NEXT: {party.find(p => p.id === battleQueue[1])?.name}</div>
               </div>
           )}
-
-          <div style={{ marginTop:'20px', fontSize:'0.8em', color:'#666', borderTop:'1px solid #333', paddingTop:'5px' }}>
-            TIP: Type command or abbreviation.
-          </div>
         </div>
       );
     }
 
-    // 2. EXPLORATION MODE
     return (
       <div>
-        <h3 style={{ color: 'var(--sys-cyan)', margin: '0 0 10px 0', borderBottom:'1px solid #333' }}>
-          ROOM ACTIONS
-        </h3>
-
-        <div style={{ marginBottom: '15px' }}>
-          <div style={{ fontWeight:'bold', color:'white' }}>NAVIGATION</div>
+        <h4 style={{ color: 'var(--sys-cyan)', margin: '0 0 8px 0', borderBottom:'1px solid #333' }}>ROOM ACTIONS</h4>
+        <div style={{ marginBottom: '10px' }}>
           {currentRoom?.exits ? Object.keys(currentRoom.exits).map(dir => (
-             <div key={dir} style={{ fontSize:'0.9em', color:'#ccc' }}>
+             <div key={dir} style={{ fontSize:'0.85em', color:'#ccc' }}>
                Go {dir.charAt(0).toUpperCase() + dir.slice(1)} ({dir.charAt(0)})
              </div>
-          )) : <div style={{color:'#666'}}>No exits?</div>}
+          )) : <div style={{color:'#666', fontSize:'0.8em'}}>No exits?</div>}
         </div>
-
-        <div style={{ marginBottom: '15px' }}>
-           <div style={{ fontWeight:'bold', color:'white' }}>OBJECTS</div>
+        <div>
            {currentRoom?.interactables ? Object.keys(currentRoom.interactables)
              .filter(k => k !== 'door') 
              .map(obj => (
-             <div key={obj} style={{ fontSize:'0.9em', color:'#00eaff' }}>
-               Examine {obj} (x {obj})
+             <div key={obj} style={{ fontSize:'0.85em', color:'#00eaff' }}>
+               x {obj}
              </div>
-           )) : <div style={{color:'#666'}}>Nothing of note.</div>}
+           )) : null}
         </div>
-
-        <div>
-           <div style={{ fontWeight:'bold', color:'white' }}>SYSTEM</div>
-           <div style={{ fontSize:'0.9em', color:'#ccc' }}>Inventory (i)</div>
-           <div style={{ fontSize:'0.9em', color:'#ccc' }}>Status (stats)</div>
-           <div style={{ fontSize:'0.9em', color:'#ccc' }}>Look (l)</div>
-           <div style={{ fontSize:'0.9em', color:'#ccc' }}>Save / Load</div>
+        <div style={{ marginTop:'10px', fontSize:'0.8em', color:'#666' }}>
+           i, stats, look, save, load
         </div>
       </div>
     );
   };
 
   return (
-    <div className="game-grid" style={{position:'relative'}}>
-      
-      {/* GAME OVER OVERLAY */}
+    <div className="game-layout">
       {isGameOver && (
           <div style={{
               position:'absolute', top:0, left:0, width:'100%', height:'100%', 
               background:'rgba(0,0,0,0.9)', zIndex:999, display:'flex', flexDirection:'column',
               alignItems:'center', justifyContent:'center', color:'red'
           }}>
-              <h1 style={{fontSize:'4rem', fontFamily:'serif'}}>YOU DIED</h1>
-              <button 
-                onClick={resetGame}
-                style={{
-                    background:'transparent', border:'1px solid red', color:'red', 
-                    padding:'10px 30px', fontSize:'1.5rem', cursor:'pointer'
-                }}
-              >
+              <h1 style={{fontSize:'3rem', margin:0}}>YOU DIED</h1>
+              <button onClick={resetGame} style={{ background:'transparent', border:'1px solid red', color:'red', padding:'10px 20px', fontSize:'1.2rem', cursor:'pointer', marginTop:'20px' }}>
                   RESTART
               </button>
           </div>
       )}
 
-      {/* LEFT PANEL: PARTY STATUS */}
-      <div className="sys-panel" style={{ gridArea: 'status', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-           <h2 style={{ color: 'var(--sys-cyan)', margin: 0 }}>PARTY</h2>
-           <span style={{ color:'#ffd700' }}>${credits}</span>
-        </div>
-        <div style={{ borderBottom: '1px solid var(--sys-cyan)', opacity: 0.5, marginBottom:'10px' }}></div>
-        
-        {party.map(char => (
-          <div key={char.id} style={{ marginBottom: '10px', padding: '5px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px' }}>
-            <div style={{ fontWeight: 'bold' }}>
-                {char.name} <span style={{fontSize:'0.8em', color:'#aaa'}}>{char.classId.toUpperCase()}</span>
-                {battleQueue[0] === char.id && <span style={{marginLeft:'5px', color:'lime', fontSize:'0.7em'}}>◀ ACT</span>}
-            </div>
-            <div style={{ fontSize:'0.9em' }}>HP: {char.hp}/{char.maxHp} | SP: {char.mp}/{char.maxMp}</div>
-            
-            {/* XP BAR */}
-            <div style={{ width: '100%', height: '3px', background: '#333', marginTop: '4px' }}>
-               <div style={{ width: `${(char.xp / char.maxXp)*100}%`, height: '100%', background: '#ffd700' }}></div>
+      <div className="sidebar">
+        <div className="panel-section tech-border" style={{ flex: 1, overflowY: 'auto', minHeight: '0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom:'5px' }}>
+               <span style={{ color: 'var(--sys-cyan)', fontWeight:'bold' }}>PARTY</span>
+               <span style={{ color:'#ffd700' }}>${credits}</span>
             </div>
             
-            {/* COOLDOWN BAR (Battle Only) */}
-            {isCombat && (
-                <div style={{ display: 'flex', alignItems: 'center', marginTop: '2px', gap: '5px' }}>
-                    <span style={{ fontSize: '0.7em', color: '#888' }}>CD:</span>
-                    <div style={{ flex: 1, height: '4px', background: '#222' }}>
-                        <div style={{ 
-                            // 7 Second Cooldown Visualization
-                            width: `${Math.max(0, 100 - (char.atbTimer / 7) * 100)}%`, 
-                            height: '100%', 
-                            background: char.atbTimer <= 0 ? 'lime' : 'orange',
-                            transition: 'width 1s linear'
-                        }}></div>
-                    </div>
+            {party.map((char, index) => (
+              <div key={char.id} style={{ marginBottom: '6px', padding: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
+                <div style={{ fontWeight: 'bold', fontSize:'0.9em', display:'flex', justifyContent:'space-between' }}>
+                    {/* ADDED INDEX INDICATOR (1) */}
+                    <span>
+                        {char.name} <span style={{color:'cyan'}}>({index + 1})</span> 
+                        <span style={{fontSize:'0.8em', color:'#aaa', marginLeft:'5px'}}>{char.classId.substring(0,3).toUpperCase()}</span>
+                    </span>
+                    {battleQueue[0] === char.id && <span style={{color:'lime', fontSize:'0.8em'}}>◀ ACT</span>}
                 </div>
+                <div style={{ fontSize:'0.8em', color:'#ccc', marginTop:'2px' }}>HP: {char.hp}/{char.maxHp} | SP: {char.mp}/{char.maxMp}</div>
+                
+                <div style={{ width: '100%', height: '3px', background: '#333', marginTop: '3px' }}>
+                   <div style={{ width: `${(char.xp / char.maxXp)*100}%`, height: '100%', background: '#ffd700' }}></div>
+                </div>
+                
+                {isCombat && (
+                    <div style={{ display: 'flex', alignItems: 'center', marginTop: '3px', gap: '5px' }}>
+                        <div style={{ flex: 1, height: '4px', background: '#222' }}>
+                            <div style={{ 
+                                width: `${Math.max(0, 100 - (char.atbTimer / 7) * 100)}%`, 
+                                height: '100%', 
+                                background: char.atbTimer <= 0 ? 'lime' : 'orange',
+                                transition: 'width 1s linear'
+                            }}></div>
+                        </div>
+                    </div>
+                )}
+              </div>
+            ))}
+        </div>
+
+        <div className="panel-section tech-border" style={{ height: '30%' }}>
+            {renderContextPanel()}
+        </div>
+      </div>
+
+      <div className="main-content">
+        <div className="panel-section" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', height:'40px' }}>
+            <span style={{ fontWeight:'bold' }}>{party.length < 3 ? "CREATION" : currentRoom?.name}</span>
+            <button onClick={() => setIsMuted(!isMuted)} style={{background:'none', border:'1px solid #333', color:'#666', fontSize:'0.7em', cursor:'pointer'}}>
+                {isMuted ? "UNMUTE" : "MUTE"}
+            </button>
+        </div>
+
+        <div style={{ height: '140px', background:'#000', position:'relative', display:'flex', justifyContent:'center', alignItems:'center', overflow:'hidden' }}>
+            {isCombat && activeEnemies.length > 0 ? (
+                <div style={{ width:'80%', zIndex:10 }}>
+                    <div style={{textAlign:'center', color:'red', fontWeight:'bold', fontSize:'0.9em', marginBottom:'5px'}}>COMBAT ALERT</div>
+                    {renderEnemyBars()}
+                </div>
+            ) : (!currentRoom?.image && <span style={{ color:'#333' }}>NO VISUAL</span>)}
+            
+            {!isCombat && currentRoom?.image && (
+                <img src={currentRoom.image} style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0.5 }} />
             )}
+        </div>
 
-            {char.status.length > 0 && <div style={{fontSize:'0.7rem', color:'orange'}}>{char.status.map(s=>s.type).join(', ')}</div>}
-          </div>
-        ))}
+        <div className="log-area">
+            {log.map((l, i) => (
+            <div key={i} style={{ marginBottom:'4px', paddingLeft:'8px', borderLeft:'2px solid cyan', fontSize:'0.95em', lineHeight:'1.4em' }}>{l}</div>
+            ))}
+            <div ref={logEndRef} />
+        </div>
+
+        <div className="panel-section" style={{ background: 'var(--sys-panel)' }}>
+            <form style={{ display:'flex', alignItems:'center' }} onSubmit={handleSubmit}>
+                <span style={{ marginRight:'10px', color:'cyan' }}>&gt;</span>
+                <input 
+                    autoFocus 
+                    type="text" 
+                    value={input} 
+                    onChange={e => setInput(e.target.value)} 
+                    style={{ background:'transparent', border:'none', color:'white', flex:1, fontSize:'1.1em', outline:'none' }} 
+                    placeholder="Enter command..." 
+                />
+            </form>
+        </div>
       </div>
 
-      {/* RIGHT PANEL: CONTEXTUAL ACTIONS */}
-      <div className="sys-panel" style={{ gridArea: 'info', overflowY: 'auto' }}>
-        {renderContextPanel()}
-      </div>
-
-      <div className="sys-panel" style={{ gridArea: 'header', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <span style={{ fontWeight:'bold' }}>{party.length < 3 ? "CHARACTER CREATION" : currentRoom?.name}</span>
-        <button onClick={() => setIsMuted(!isMuted)}>{isMuted ? "UNMUTE" : "MUTE"}</button>
-      </div>
-
-      <div className="sys-panel" style={{ gridArea: 'image', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#000' }}>
-        {isCombat && activeEnemies.length > 0 ? (
-          <div style={{ width:'90%' }}>
-            <h2 style={{ color:'red', textAlign:'center' }}>COMBAT ALERT</h2>
-            {renderEnemyBars()}
-          </div>
-        ) : (!currentRoom?.image && <span style={{ color:'#555' }}>[VISUAL FEED OFFLINE]</span>)}
-        {!isCombat && currentRoom?.image && <img src={currentRoom.image} style={{position:'absolute', width:'100%', height:'100%', objectFit:'cover', opacity:0.4}} />}
-      </div>
-
-      <div className="sys-panel" style={{ gridArea: 'output', overflowY: 'auto' }}>
-        {log.map((l, i) => (
-          <div key={i} style={{ marginBottom:'4px', paddingLeft:'5px', borderLeft:'2px solid cyan' }}>{l}</div>
-        ))}
-        <div ref={logEndRef} />
-      </div>
-
-      <form className="sys-panel" style={{ gridArea: 'input', display:'flex', alignItems:'center' }} onSubmit={handleSubmit}>
-        <span style={{ marginRight:'10px', color:'cyan' }}>&gt;</span>
-        <input autoFocus type="text" value={input} onChange={e => setInput(e.target.value)} style={{ background:'transparent', border:'none', color:'white', flex:1, fontSize:'1.1em' }} placeholder="Enter command..." />
-      </form>
     </div>
   );
 }
