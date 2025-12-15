@@ -1,6 +1,6 @@
 [
-  { "id": "steal", "name": "Steal", "cost": 1, "type": "utility", "subType": "steal", "description": "Takes item from enemy loot.", "aliases": ["st", "rob"], "classes": ["rogue"] },
-  { "id": "precision_strike", "name": "Precision Strike", "cost": 1, "type": "physical", "formula": "weapon + 2d4", "hitChanceBonus": 100, "description": "Always hits. Weapon + 2d4.", "aliases": ["pr", "ps"], "classes": ["rogue"] },
+  { "id": "steal", "name": "Steal", "cost": 1, "type": "utility", "subType": "steal", "description": "Steals item + $50.", "aliases": ["st", "rob"], "classes": ["rogue"] },
+  { "id": "precision_strike", "name": "Precision Strike", "cost": 1, "type": "physical", "val": 2.0, "hitChanceBonus": 100, "description": "Always hits. 2x Weapon Dmg.", "aliases": ["pr", "ps"], "classes": ["rogue"] },
   { "id": "ghost_step", "name": "Ghost Step", "cost": 1, "type": "buff", "stat": "dex", "val": 2.0, "duration": 60, "description": "Doubles DEX for 60s.", "aliases": ["gs", "ghost"], "classes": ["rogue"] },
   { "id": "skeleton_key", "name": "Skeleton Key", "cost": 1, "type": "utility", "subType": "unlock", "description": "Unlocks doors/chests.", "aliases": ["sk", "key"], "classes": ["rogue"] },
   { "id": "double_strike", "name": "Double Strike", "cost": 1, "type": "physical", "val": 2.0, "description": "Deals 2x Weapon Damage.", "aliases": ["ds", "double"], "classes": ["rogue"] },

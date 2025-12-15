@@ -237,16 +237,43 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
   const actorIndex = currentState.party.findIndex(c => c.id === currentActorId);
   const actor = currentState.party[actorIndex];
 
+  // --- UPDATED ARGUMENT PARSING (Priority: Skill > Actor Name) ---
+  let cleanArgs = args;
   const potentialName = args.split(" ")[0];
   const namedIndex = resolvePartyIndex(potentialName, currentState.party);
   
+  // Only treat the first word as an ACTOR NAME if:
+  // 1. It resolves to a valid party member
+  // 2. That member is NOT the current actor (implies switching control)
+  // 3. AND... checks for collision: The word is NOT also a known skill/item alias
+  const potentialSkill = findSkill(potentialName);
+  const potentialItem = findItem(potentialName);
+  const isAmbiguousAlias = !!potentialSkill || !!potentialItem;
+
+  // If it's a name, not the current actor, AND NOT a skill alias (or if it is an alias, we aren't using "cast"), treat as actor switch.
+  // Actually, simplest fix: If I am "Fighter", and I type "h", and "h" is "Healer" (party member) AND "Heal" (skill)...
+  // Context matters.
+  
+  let intendedActorChange = false;
   if (namedIndex !== -1 && currentState.party[namedIndex].id !== currentActorId) {
+      // It matches a different character. Is it also a skill?
+      if (isAmbiguousAlias) {
+          // If it matches a skill, assume player meant the SKILL for the CURRENT actor.
+          // e.g. "h" -> Heal, not Healer.
+          intendedActorChange = false;
+      } else {
+          intendedActorChange = true;
+      }
+  }
+
+  if (intendedActorChange) {
       store.getState().addLog(`It's not ${currentState.party[namedIndex].name}'s turn! It's ${actor.name}'s turn.`);
       return;
   }
 
-  let cleanArgs = args;
-  if (namedIndex !== -1) cleanArgs = args.substring(potentialName.length).trim();
+  // If we decided it wasn't an actor change, proceed with args as-is or stripped if we did strict name matching logic before.
+  // In this simplified logic, we just don't strip the name if we decided it was a skill.
+  // ------------------------------------------------------------------
 
   // Attack
   if (['attack', 'a', 'kill', 'hit'].includes(command)) {
@@ -275,13 +302,12 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
       const parts = cleanArgs.split(" ");
       if (parts.length > 1) {
           const last = parts[parts.length - 1].toLowerCase();
-          // Check if last word is a valid target shortcut (1, 2, 3, a, b, c) or full name segment
+          // Check if last word is a valid target shortcut (1, 2, 3, a, b, c)
           if (/^[a-c1-3]$/.test(last) || last.startsWith('hero') || last.startsWith('guard')) {
               targetStr = parts.pop()!;
               spellStr = parts.join(" ");
           } else {
-              // Try to see if last word resolves to an index?
-              // This covers cases where regex misses but resolveEnemyIndex hits.
+              // Fallback: Check indexes
               if (resolveEnemyIndex(last, currentState.activeEnemies) !== -1 || resolvePartyIndex(last, currentState.party) !== -1) {
                   targetStr = parts.pop()!;
                   spellStr = parts.join(" ");

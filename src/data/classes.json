@@ -2,17 +2,21 @@
   {
     "id": "rogue",
     "name": "Rogue",
-    "stats": { "str": 10, "con": 8, "dex": 20, "wis": 10, "hitChance": 85, "skillSlots": 3 },
+    "stats": { "str": 10, "con": 8, "dex": 20, "wis": 10, "hitChance": 85, "skillSlots": 4 },
     "startingEquipment": ["dual_knives", "clothes", "gloves", "boots", "lucky_charm"],
     "startingItems": ["hp_potion", "hp_potion", "hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick"],
     "startingCredits": 200,
-    "startingSkills": ["steal", "precision_strike"],
+    "startingSkills": ["steal", "precision_strike", "ghost_step"],
     "unlocks": {
       "2": "skeleton_key",
       "3": "double_strike",
       "5": "poison_blade",
+      "7": "auto_counter",
       "9": "disable",
-      "15": "trick_coin"
+      "11": "critical_strike",
+      "12": "phantom_step",
+      "15": "trick_coin",
+      "18": "multi_ghost_step"
     }
   },
   {
@@ -22,10 +26,10 @@
     "startingEquipment": ["longsword", "clothes", "gloves", "boots", "lucky_charm"],
     "startingItems": ["hp_potion", "hp_potion", "hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion"],
     "startingCredits": 100,
-    "startingSkills": ["heavy_strike", "brutal_strike"],
+    "startingSkills": ["heavy_strike", "brutal_strike", "berzerk"],
     "unlocks": {
-      "2": "evade_up",
-      "3": "armor_up"
+      "2": "evade_up, armor_up",
+      "3": "super_evade_up, super_armor_up"
     }
   },
   {
@@ -35,9 +39,9 @@
     "startingEquipment": ["staff", "clothes", "gloves", "boots", "lucky_charm"],
     "startingItems": ["hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion"],
     "startingCredits": 100,
-    "startingSkills": ["fire", "shock"],
+    "startingSkills": ["fire", "freeze", "shock"],
     "unlocks": {
-      "2": "flame_wall"
+      "2": "flame_wall, shock_wall"
     }
   },
   {
@@ -47,7 +51,7 @@
     "startingEquipment": ["staff", "clothes", "gloves", "boots", "lucky_charm"],
     "startingItems": ["hp_potion", "hp_potion", "hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "phoenix_potion", "phoenix_potion", "tent"],
     "startingCredits": 100,
-    "startingSkills": ["heal", "revive"],
+    "startingSkills": ["heal", "healing_rain", "revive"],
     "unlocks": {
       "2": "greater_revive, max_revive",
       "3": "greater_heal, group_rain"

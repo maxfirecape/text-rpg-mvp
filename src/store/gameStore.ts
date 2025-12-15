@@ -199,20 +199,30 @@ export const useGameStore = create<GameState>((set, get) => ({
             nextQueue.push(entity.id);
         }
 
-        // --- UPDATED: CONSTANT DoT (-1 per tick per status) ---
+        // --- DoT (Burn/Poison) ---
         const dotEffects = entity.status.filter((s: StatusEffect) => ['burn', 'poison'].includes(s.type));
         if (dotEffects.length > 0) {
-            const dmg = dotEffects.length; // 1 dmg per active effect
+            const dmg = dotEffects.length; 
             entity.hp = Math.max(0, entity.hp - dmg);
         }
-        // ------------------------------------------------------
+
+        // --- NEW: HoT (Healing Rain / Group Rain) ---
+        const hotEffects = entity.status.filter((s: StatusEffect) => ['Healing Rain', 'Group Rain'].includes(s.type));
+        if (hotEffects.length > 0) {
+            hotEffects.forEach((s: StatusEffect) => {
+                // Apply the 'val' stored in the status (e.g. 8 HP)
+                const healAmt = s.val || 1; 
+                entity.hp = Math.min(entity.maxHp, entity.hp + healAmt);
+            });
+        }
+        // --------------------------------------------
 
         const activeStatus = entity.status.filter((eff: StatusEffect) => {
             eff.duration -= dt;
             return eff.duration > 0;
         });
         
-        if (activeStatus.length !== entity.status.length || newTimer !== entity.atbTimer || dotEffects.length > 0) {
+        if (activeStatus.length !== entity.status.length || newTimer !== entity.atbTimer || dotEffects.length > 0 || hotEffects.length > 0) {
             return { ...entity, status: activeStatus, atbTimer: Math.max(0, newTimer) };
         }
         return entity;
@@ -338,6 +348,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       let logMsg = "";
       
+      if (skill.subType === 'steal') {
+          const newCredits = s.credits + 50;
+          logMsg = `${actor.name} stole $50!`;
+          return { party: p, credits: newCredits, battleQueue: newQueue, log: [...s.log, logMsg] };
+      }
+
       if(skill.type === 'buff') {
          const t = type==='party' ? p[tIdx] : actor; 
          t.status.push({ type: skill.name, duration: skill.duration || 10, val: skill.val, stat: skill.stat });
@@ -349,20 +365,45 @@ export const useGameStore = create<GameState>((set, get) => ({
          t.mp = Math.min(t.maxMp, t.mp + amt);
          logMsg = `${actor.name} restores ${amt} SP to ${t.name}.`;
       }
+      // --- UPDATED HEAL LOGIC (Instant vs HoT vs Party) ---
       else if(skill.type === 'heal' || skill.type === 'revive') {
-         const t = p[tIdx];
-         let amt = 0;
-         if(skill.formula?.includes('%')) { 
-            if(skill.id === 'max_revive' || skill.formula === '100%') amt = t.maxHp;
-            else amt = Math.floor(t.maxHp * 0.5) + calcVal("2d4", actorStats);
-            if(t.hp <= 0) { t.hp = amt; logMsg = `${actor.name} revives ${t.name}!`; }
-            else { t.hp = Math.min(t.maxHp, t.hp + amt); logMsg = `${actor.name} heals ${t.name}.`; }
+         
+         // 1. DETERMINE TARGETS (Party vs Single)
+         const targets = (skill.target === 'party') ? p : [p[tIdx]];
+         
+         targets.forEach(t => {
+             // 2. CHECK FOR HoT (Duration > 0)
+             if (skill.duration && skill.duration > 0) {
+                 const amt = calcVal(skill.formula || "[WIS]", actorStats, actor.level);
+                 t.status.push({ 
+                     type: skill.name, // e.g. "Healing Rain"
+                     duration: skill.duration, 
+                     val: amt // Store the calculated heal amount
+                 });
+             } 
+             // 3. INSTANT HEAL
+             else {
+                 let amt = 0;
+                 if(skill.formula?.includes('%')) { 
+                    if(skill.id === 'max_revive' || skill.formula === '100%') amt = t.maxHp;
+                    else amt = Math.floor(t.maxHp * 0.5) + calcVal("2d4", actorStats);
+                    
+                    if(t.hp <= 0) t.hp = amt; // Revive
+                    else t.hp = Math.min(t.maxHp, t.hp + amt);
+                 } else {
+                    amt = calcVal(skill.formula || "[WIS]", actorStats, actor.level);
+                    t.hp = Math.min(t.maxHp, t.hp + amt);
+                 }
+             }
+         });
+
+         if (skill.duration && skill.duration > 0) {
+             logMsg = `${actor.name} casts ${skill.name}! (Regen active)`;
          } else {
-            amt = calcVal(skill.formula || "[WIS]", actorStats, actor.level);
-            t.hp = Math.min(t.maxHp, t.hp + amt);
-            logMsg = `${actor.name} heals ${t.name} for ${amt}.`;
+             logMsg = `${actor.name} casts ${skill.name}.`;
          }
       }
+      // ----------------------------------------------------
       else { 
          const t = e[tIdx];
          if (!t) return { log: [...s.log, "Target not found."] };
@@ -393,17 +434,31 @@ export const useGameStore = create<GameState>((set, get) => ({
       if(e.every(x => x.hp <= 0)) {
          const xpTotal = e.reduce((sum, en) => sum + en.xpReward, 0);
          const share = Math.floor(xpTotal / p.length);
+         let levelUpMsg = "";
+
          p.forEach(c => {
             c.xp += share;
             while(c.xp >= c.maxXp) {
-               c.xp -= c.maxXp; c.level++; c.maxXp = Math.floor(c.maxXp*1.5);
+               c.xp -= c.maxXp; 
+               c.level++; 
+               c.maxXp = Math.floor(c.maxXp * 1.5);
                c.maxHp += 5; c.hp = c.maxHp;
+               
                const cls = classesData.find(cl => cl.id === c.classId);
-               const u = cls?.unlocks ? cls.unlocks[c.level.toString()] : null;
-               if(u) u.split(',').forEach((k:string)=> { if(!c.unlockedSkills.includes(k.trim())) c.unlockedSkills.push(k.trim()); });
+               const newSkillsStr = cls?.unlocks ? cls.unlocks[c.level.toString()] : null;
+               
+               if(newSkillsStr) {
+                   const newSkills = newSkillsStr.split(',').map(s => s.trim());
+                   newSkills.forEach(k => { 
+                       if(!c.unlockedSkills.includes(k)) c.unlockedSkills.push(k); 
+                   });
+                   levelUpMsg = ` | ${c.name} reached Lv ${c.level}! Unlocked: ${newSkills.join(', ')}`;
+               } else {
+                   levelUpMsg = ` | ${c.name} reached Lv ${c.level}!`;
+               }
             }
          });
-         return { activeEnemies: e, party: p, inventory: inv, isCombat: false, battleQueue: [], log: [...s.log, logMsg, `VICTORY! +${xpTotal} XP`] };
+         return { activeEnemies: e, party: p, inventory: inv, isCombat: false, battleQueue: [], log: [...s.log, logMsg, `VICTORY! +${xpTotal} XP${levelUpMsg}`] };
       }
       return { activeEnemies: e, party: p, inventory: inv, battleQueue: newQueue, log: [...s.log, logMsg] };
     });
