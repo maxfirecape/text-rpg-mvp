@@ -17,7 +17,6 @@ const getRoom = (id: string): Room | undefined => roomsData.find(r => r.id === i
 const findItem = (q: string): Item | undefined => itemsData.find(i => i.id === q || i.name.toLowerCase() === q || i.aliases?.includes(q));
 const findSkill = (q: string): Skill | undefined => skillsData.find(s => s.id === q || s.name.toLowerCase() === q || s.aliases?.includes(q));
 
-// --- NUMERIC SHORTCUTS ---
 const resolveEnemyIndex = (q: string, enemies: Enemy[]) => {
   if (!q) return enemies.findIndex(e => e.hp > 0);
   const l = q.toLowerCase();
@@ -42,7 +41,6 @@ const resolvePartyIndex = (q: string, party: Character[]) => {
 
   return party.findIndex(c => c.name.toLowerCase().includes(l));
 };
-// ----------------------------------
 
 const handleDialogue = (input: string, currentState: GameState) => {
   if (currentState.activeDialogue === "rex_intro") {
@@ -172,7 +170,6 @@ const cmdStats = (args: string, currentState: GameState) => {
   }
 };
 
-// --- NEW: EQUIPMENT COMMAND ---
 const cmdEquipment = (args: string, currentState: GameState) => {
   const targetIdx = resolvePartyIndex(args, currentState.party);
   const targets = targetIdx !== -1 ? [currentState.party[targetIdx]] : currentState.party;
@@ -190,7 +187,6 @@ const cmdEquipment = (args: string, currentState: GameState) => {
       store.getState().addLog(`  Acc:    ${acc}`);
   });
 };
-// ------------------------------
 
 const cmdSkills = (args: string, currentState: GameState) => {
   const targetIdx = resolvePartyIndex(args, currentState.party);
@@ -267,8 +263,15 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
       const parts = cleanArgs.split(" on ");
       spellStr = parts[0];
       targetStr = parts[1];
-    } else {
-      // 2. Implicit "skill target"
+    } 
+    // 2. Explicit "from" (for Steal)
+    else if (cleanArgs.includes(" from ")) {
+      const parts = cleanArgs.split(" from ");
+      spellStr = parts[0];
+      targetStr = parts[1];
+    }
+    // 3. Implicit "skill target"
+    else {
       const parts = cleanArgs.split(" ");
       if (parts.length > 1) {
           const last = parts[parts.length - 1].toLowerCase();
@@ -292,7 +295,6 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
 
     const isFriendly = skill && (skill.type === 'heal' || skill.type === 'buff' || skill.type === 'revive' || skill.type === 'restore_mp');
     
-    // If friendly, try resolving against party first
     if (isFriendly) {
         let tIdx = resolvePartyIndex(targetStr, currentState.party);
         if (tIdx === -1 && !targetStr) tIdx = actorIndex;
@@ -303,7 +305,6 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
         }
     }
 
-    // Default to enemy
     const enemyTargetIdx = resolveEnemyIndex(targetStr || "", currentState.activeEnemies);
     store.getState().performAction(actorIndex, actionId, enemyTargetIdx, 'enemy');
   }
@@ -476,7 +477,7 @@ export const processCommand = (input: string) => {
       cmdInventory(); break;
     case 'stats': case 'score': case 'status':
       cmdStats(args, currentState); break;
-    case 'eq': case 'gear': case 'equipment': // <--- REGISTERED ALIASES
+    case 'eq': case 'gear': case 'equipment':
       cmdEquipment(args, currentState); break;
     case 'skills': case 'spells': case 'abilities':
       cmdSkills(args, currentState); break;

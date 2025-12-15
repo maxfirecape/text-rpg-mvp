@@ -1,31 +1,36 @@
 [
-  { "id": "steal", "name": "Steal", "cost": 1, "type": "utility", "subType": "steal", "description": "Takes one item from the enemy loot.", "aliases": ["rob", "pickpocket", "st"], "classes": ["rogue"] },
-  { "id": "precision_strike", "name": "Precision Strike", "cost": 1, "type": "physical", "formula": "weapon + 2d4", "hitChanceBonus": 100, "description": "Always hits. Weapon Dmg + 2d4.", "aliases": ["pr", "precision"], "classes": ["rogue"] },
+  { "id": "steal", "name": "Steal", "cost": 1, "type": "utility", "subType": "steal", "description": "Takes one item from enemy loot.", "aliases": ["rob", "pickpocket", "st"], "classes": ["rogue"] },
+  { "id": "precision_strike", "name": "Precision Strike", "cost": 1, "type": "physical", "formula": "weapon + 2d4", "hitChanceBonus": 100, "description": "Always hits. Weapon + 2d4.", "aliases": ["pr", "precision"], "classes": ["rogue"] },
   { "id": "ghost_step", "name": "Ghost Step", "cost": 1, "type": "buff", "stat": "dex", "val": 2.0, "duration": 60, "description": "Doubles DEX for 60s.", "aliases": ["gs", "ghost"], "classes": ["rogue"] },
-  { "id": "skeleton_key", "name": "Skeleton Key", "cost": 1, "type": "utility", "subType": "unlock", "description": "Unlocks doors/chests for 1 SP.", "aliases": ["sk", "key"], "classes": ["rogue"] },
+  { "id": "skeleton_key", "name": "Skeleton Key", "cost": 1, "type": "utility", "subType": "unlock", "description": "Unlocks doors/chests.", "aliases": ["sk", "key"], "classes": ["rogue"] },
   { "id": "double_strike", "name": "Double Strike", "cost": 1, "type": "physical", "val": 2.0, "description": "Deals 2x Weapon Damage.", "aliases": ["ds", "double"], "classes": ["rogue"] },
   { "id": "poison_blade", "name": "Poison Tipped Blade", "cost": 1, "type": "physical", "val": 1.0, "status": "poison", "chance": 1.0, "duration": 30, "description": "Weapon Dmg + Poison (30s).", "aliases": ["ptb", "poison"], "classes": ["rogue"] },
-  { "id": "disable", "name": "Disable", "cost": 1, "type": "debuff", "status": "disabled", "duration": 20, "description": "Disables enemy attacks for 20s.", "aliases": ["dis", "stop"], "classes": ["rogue"] },
-  { "id": "trick_coin", "name": "Trick Coin", "cost": 1, "type": "utility", "subType": "distract", "duration": 10, "description": "Distracts enemy for 1 turn.", "aliases": ["tc", "coin"], "classes": ["rogue"] },
-  
+  { "id": "auto_counter", "name": "Auto Counter", "cost": 1, "type": "buff", "description": "PLACEHOLDER", "aliases": ["ac", "counter"], "classes": ["rogue"] },
+  { "id": "disable", "name": "Disable", "cost": 1, "type": "debuff", "status": "disabled", "duration": 20, "description": "Disables enemy for 20s.", "aliases": ["dis", "stop"], "classes": ["rogue"] },
+  { "id": "critical_strike", "name": "Critical Strike", "cost": 1, "type": "physical", "val": 1.5, "description": "PLACEHOLDER", "aliases": ["cs", "crit"], "classes": ["rogue"] },
+  { "id": "phantom_step", "name": "Phantom Step", "cost": 1, "type": "buff", "description": "PLACEHOLDER", "aliases": ["ps", "phantom"], "classes": ["rogue"] },
+  { "id": "trick_coin", "name": "Trick Coin", "cost": 1, "type": "utility", "description": "Sets gold to max (10s).", "aliases": ["tc", "coin"], "classes": ["rogue"] },
+  { "id": "multi_ghost_step", "name": "Multi Ghost Step", "cost": 2, "type": "buff", "description": "PLACEHOLDER", "aliases": ["mgs", "multighost"], "classes": ["rogue"] },
+
   { "id": "heavy_strike", "name": "Heavy Strike", "cost": 1, "type": "physical", "val": 2.5, "description": "Deals 2.5x Weapon Damage.", "aliases": ["hs", "heavy"], "classes": ["fighter"] },
   { "id": "brutal_strike", "name": "Brutal Strike", "cost": 2, "type": "physical", "val": 3.5, "description": "Deals 3.5x Weapon Damage.", "aliases": ["bs", "brutal"], "classes": ["fighter"] },
   { "id": "berzerk", "name": "Berzerk", "cost": 1, "type": "buff", "stat": "dmg_mult", "val": 1.5, "duration": 30, "description": "Damage x1.5 for 30s.", "aliases": ["bzk", "rage"], "classes": ["fighter"] },
   { "id": "evade_up", "name": "Evade Up", "cost": 1, "type": "buff", "stat": "dex", "val": 2.0, "duration": 20, "description": "Doubles DEX for 20s.", "aliases": ["eu", "evade"], "classes": ["fighter"] },
   { "id": "armor_up", "name": "Armor Up", "cost": 1, "type": "buff", "stat": "def_mult", "val": 1.1, "duration": 45, "description": "Armor +10% for 45s.", "aliases": ["au", "armor"], "classes": ["fighter"] },
+  { "id": "super_evade_up", "name": "Super Evade Up", "cost": 2, "type": "buff", "stat": "dex", "val": 2.0, "duration": 40, "description": "Doubles DEX for 40s.", "aliases": ["seu"], "classes": ["fighter"] },
+  { "id": "super_armor_up", "name": "Super Armor Up", "cost": 2, "type": "buff", "stat": "def_mult", "val": 1.3, "duration": 45, "description": "Armor +30% for 45s.", "aliases": ["sau"], "classes": ["fighter"] },
 
-  { "id": "fire", "name": "Fire", "cost": 1, "type": "magic", "formula": "2d6 * [LVL]", "status": "burn", "chance": 0.5, "duration": 30, "description": "2d6 Dmg/Lvl. 50% chance to Burn (30s).", "aliases": ["f", "fireball", "burn"], "classes": ["wizard"] },
-  { "id": "freeze", "name": "Freeze", "cost": 1, "type": "magic", "formula": "2d6 * [LVL]", "status": "frozen", "chance": 0.5, "duration": 10, "description": "2d6 Dmg/Lvl. 50% chance to Freeze (10s).", "aliases": ["fr", "frz", "ice"], "classes": ["wizard"] },
-  { "id": "shock", "name": "Shock", "cost": 1, "type": "magic", "formula": "3d4 * [LVL]", "status": "stun", "chance": 0.8, "duration": 5, "description": "3d4 Dmg/Lvl. 80% chance to Stun (5s).", "aliases": ["s", "bolt", "zap"], "classes": ["wizard"] },
-  { "id": "flame_wall", "name": "Flame Wall", "cost": 2, "type": "magic", "target": "all_enemies", "formula": "1d10 * [LVL]", "status": "burn", "chance": 0.4, "duration": 30, "description": "1d10 Dmg/Lvl (AoE). 40% Burn.", "aliases": ["fw", "wall"], "classes": ["wizard"] },
+  { "id": "fire", "name": "Fire", "cost": 1, "type": "magic", "formula": "2d6 * [LVL]", "status": "burn", "chance": 0.5, "duration": 30, "description": "2d6/Lvl. 50% Burn.", "aliases": ["f", "fireball", "burn"], "classes": ["wizard"] },
+  { "id": "freeze", "name": "Freeze", "cost": 1, "type": "magic", "formula": "2d6 * [LVL]", "status": "frozen", "chance": 0.5, "duration": 10, "description": "2d6/Lvl. 50% Freeze.", "aliases": ["fr", "frz", "ice"], "classes": ["wizard"] },
+  { "id": "shock", "name": "Shock", "cost": 1, "type": "magic", "formula": "3d4 * [LVL]", "status": "stun", "chance": 0.8, "duration": 5, "description": "3d4/Lvl. 80% Stun.", "aliases": ["s", "bolt", "zap"], "classes": ["wizard"] },
+  { "id": "flame_wall", "name": "Flame Wall", "cost": 2, "type": "magic", "target": "all_enemies", "formula": "1d10 * [LVL]", "status": "burn", "chance": 0.4, "duration": 30, "description": "1d10/Lvl (AoE). 40% Burn.", "aliases": ["fw", "wall"], "classes": ["wizard"] },
+  { "id": "shock_wall", "name": "Shock Wall", "cost": 2, "type": "magic", "target": "all_enemies", "formula": "2d6 * [LVL]", "status": "stun", "chance": 0.6, "duration": 5, "description": "2d6/Lvl (AoE). 60% Stun.", "aliases": ["sw", "shockwall"], "classes": ["wizard"] },
 
-  { "id": "heal", "name": "Heal", "cost": 1, "type": "heal", "formula": "[WIS]", "description": "Heals target for [WIS].", "aliases": ["h", "cure"], "classes": ["cleric"] },
-  { "id": "healing_rain", "name": "Healing Rain", "cost": 1, "type": "heal", "target": "party", "formula": "[WIS]*0.5", "duration": 10, "description": "Heals party [WIS]/2 over 10s.", "aliases": ["hr", "rain"], "classes": ["cleric"] },
-  { "id": "revive", "name": "Revive", "cost": 1, "type": "revive", "formula": "[WIS]", "description": "Revives target with [WIS] HP.", "aliases": ["res", "life"], "classes": ["cleric"] },
+  { "id": "heal", "name": "Heal", "cost": 1, "type": "heal", "formula": "[WIS]", "description": "Heals [WIS].", "aliases": ["h", "cure"], "classes": ["cleric"] },
+  { "id": "healing_rain", "name": "Healing Rain", "cost": 1, "type": "heal", "target": "party", "formula": "[WIS]*0.5", "duration": 10, "description": "Party Regen [WIS]/2 (10s).", "aliases": ["hr", "rain"], "classes": ["cleric"] },
+  { "id": "revive", "name": "Revive", "cost": 1, "type": "revive", "formula": "[WIS]", "description": "Revives with [WIS] HP.", "aliases": ["res", "life"], "classes": ["cleric"] },
   { "id": "greater_revive", "name": "Greater Revive", "cost": 2, "type": "revive", "formula": "50% + 2d4", "description": "Revives with 50% HP + 2d4.", "aliases": ["gr", "grevive"], "classes": ["cleric"] },
   { "id": "max_revive", "name": "Max Revive", "cost": 3, "type": "revive", "formula": "100%", "description": "Revives with 100% HP.", "aliases": ["mr", "maxlife"], "classes": ["cleric"] },
-  { "id": "greater_heal", "name": "Greater Heal", "cost": 2, "type": "heal", "formula": "[WIS] * 2", "description": "Heals target for [WIS] * 2.", "aliases": ["gh", "gheal"], "classes": ["cleric"] },
-  { "id": "group_rain", "name": "Group Rain", "cost": 2, "type": "heal", "target": "party", "formula": "[WIS]*1.25", "duration": 10, "description": "Heals party [WIS]*1.25 over 10s.", "aliases": ["grouprain", "gr"], "classes": ["cleric"] }
+  { "id": "greater_heal", "name": "Greater Heal", "cost": 2, "type": "heal", "formula": "[WIS] * 2", "description": "Heals [WIS] * 2.", "aliases": ["gh", "gheal"], "classes": ["cleric"] },
+  { "id": "group_rain", "name": "Group Rain", "cost": 2, "type": "heal", "target": "party", "formula": "[WIS]*1.25", "duration": 10, "description": "Party Regen [WIS]*1.25 (10s).", "aliases": ["gpr", "grouprain"], "classes": ["cleric"] }
 ]
-
-

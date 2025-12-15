@@ -22,7 +22,7 @@
     "startingEquipment": ["longsword", "clothes", "gloves", "boots", "lucky_charm"],
     "startingItems": ["hp_potion", "hp_potion", "hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion"],
     "startingCredits": 100,
-    "startingSkills": ["heavy_strike"],
+    "startingSkills": ["heavy_strike", "brutal_strike"],
     "unlocks": {
       "2": "evade_up",
       "3": "armor_up"

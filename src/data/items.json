@@ -1,26 +1,35 @@
 [
   { "id": "dual_knives", "name": "Dual Knives", "type": "weapon", "damage": "[STR] + 2d4", "description": "Standard rogue weapons.", "aliases": ["001_DualKnife", "daggers"] },
-  { "id": "dual_cleavers", "name": "Dual Cleavers", "type": "weapon", "damage": "[STR] + 3d4", "description": "Heavy chopping blades.", "aliases": ["001a_DualCleavers"] },
+  { "id": "dual_cleavers", "name": "Dual Cleavers", "type": "weapon", "damage": "[STR] + 3d4", "description": "Heavy chopping blades.", "aliases": ["001a_DualCleavers", "cleavers"] },
   { "id": "rapier", "name": "Rapier", "type": "weapon", "damage": "[STR] + 2d4", "statBonus": { "dex": 1 }, "description": "Slender blade.", "aliases": ["001b_Rapier"] },
   { "id": "poison_rapier", "name": "Poison Rapier", "type": "weapon", "damage": "[STR] + 2d4", "statBonus": { "dex": 1 }, "effect": "poison", "description": "Venomous blade.", "aliases": ["001c_PoisonRapier"] },
+  
   { "id": "longsword", "name": "Longsword", "type": "weapon", "damage": "[STR] + 2d6", "description": "Reliable fighter blade.", "aliases": ["002_Longsword", "sword"] },
   { "id": "claymore", "name": "Claymore", "type": "weapon", "damage": "[STR] + 3d6", "description": "Massive two-handed sword.", "aliases": ["002a_Claymore"] },
-  { "id": "staff", "name": "Standard Staff", "type": "weapon", "damage": "[STR] * 0.66", "statBonus": { "wis": 2 }, "description": "Basic magical focus.", "aliases": ["003_StandardStaff", "wand"] },
-  { "id": "silver_staff", "name": "Silver Staff", "type": "weapon", "damage": "[STR] * 0.66", "statBonus": { "wis": 4 }, "description": "High quality focus.", "aliases": ["003a_SilverStaff"] },
+  
+  { "id": "staff", "name": "Standard Staff", "type": "weapon", "damage": "[STR]", "statBonus": { "wis": 2 }, "description": "Basic magical focus.", "aliases": ["003_StandardStaff", "wand"] },
+  { "id": "silver_staff", "name": "Silver Staff", "type": "weapon", "damage": "[STR]", "statBonus": { "wis": 4 }, "description": "High quality focus.", "aliases": ["003a_SilverStaff"] },
+  
   { "id": "holy_sword", "name": "Holy Sword", "type": "weapon", "damage": "[STR] + 2d6", "description": "Blessed blade.", "aliases": ["004_HolySword"] },
 
   { "id": "clothes", "name": "Common Clothes", "type": "armor", "defense": { "min": 0.05, "max": 0.08 }, "description": "5-8% Dmg Reduction.", "aliases": ["001_CommonClothes"] },
   { "id": "leather", "name": "Leather Clothes", "type": "armor", "defense": { "min": 0.07, "max": 0.10 }, "description": "7-10% Dmg Reduction.", "aliases": ["002_LeatherClothes"] },
-  { "id": "chainmail", "name": "Standard Chainmail", "type": "armor", "defense": { "min": 0.10, "max": 0.12 }, "description": "10-12% Dmg Reduction.", "aliases": ["003_StandardChainmail"] },
+  { "id": "chainmail", "name": "Standard Chainmail", "type": "armor", "defense": { "min": 0.10, "max": 0.12 }, "description": "10-12% Dmg Reduction.", "aliases": ["003_StandardChainmail", "mail"] },
   { "id": "light_chain", "name": "Light Chainmail", "type": "armor", "defense": { "min": 0.09, "max": 0.11 }, "statBonus": { "dex": 1 }, "description": "9-11% Reduc +1 DEX.", "aliases": ["004_LightChainmail"] },
 
   { "id": "gloves", "name": "Common Gloves", "type": "accessory", "defense": { "min": 0.01, "max": 0.02 }, "description": "1-2% Reduction.", "aliases": ["001_CommonGloves"] },
   { "id": "boots", "name": "Common Boots", "type": "accessory", "defense": { "min": 0.01, "max": 0.02 }, "description": "1-2% Reduction.", "aliases": ["002_CommonBoots"] },
   { "id": "lucky_charm", "name": "Lucky Charm", "type": "accessory", "statBonus": { "dex": 1 }, "description": "Adds 1 DEX.", "aliases": ["003_LuckyCharm"] },
+  
+  { "id": "leather_gloves", "name": "Leather Gloves", "type": "accessory", "defense": { "min": 0.02, "max": 0.04 }, "description": "2-4% Reduction.", "aliases": ["004_LeatherGloves"] },
+  { "id": "leather_boots", "name": "Leather Boots", "type": "accessory", "defense": { "min": 0.02, "max": 0.04 }, "description": "2-4% Reduction.", "aliases": ["005_LeatherBoots"] },
+  
+  { "id": "steel_gloves", "name": "Steel Gloves", "type": "accessory", "defense": { "min": 0.03, "max": 0.06 }, "description": "3-6% Reduction.", "aliases": ["006_SteelGloves"] },
+  { "id": "steel_boots", "name": "Steel Boots", "type": "accessory", "defense": { "min": 0.03, "max": 0.06 }, "description": "3-6% Reduction.", "aliases": ["007_SteelBoots"] },
 
-  { "id": "hp_potion", "name": "HP Potion", "type": "consumable", "effect": "heal_2d6", "description": "Recovers 2d6 HP.", "aliases": ["001_HPPotion"] },
-  { "id": "skill_potion", "name": "Skill Potion", "type": "consumable", "effect": "restore_skill", "description": "Recovers 1d4 SP.", "aliases": ["002_SkillPotion"] },
-  { "id": "lockpick", "name": "Lockpick", "type": "consumable", "effect": "unlock", "description": "Opens locks.", "aliases": ["003_Lockpick"] },
-  { "id": "phoenix_potion", "name": "Phoenix Potion", "type": "consumable", "effect": "revive", "description": "Revives to full HP.", "aliases": ["004_PhoenixPotion"] },
+  { "id": "hp_potion", "name": "HP Potion", "type": "consumable", "effect": "heal_2d6", "description": "Recovers 2d6 HP.", "aliases": ["001_HealthPotion", "hp potion", "hppot", "hp pot", "hp"] },
+  { "id": "skill_potion", "name": "Skill Potion", "type": "consumable", "effect": "restore_skill", "description": "Recovers 1d4 SP.", "aliases": ["002_SkillPotion", "skill potion", "skillpot", "skill pot", "skill", "sp"] },
+  { "id": "lockpick", "name": "Lockpick", "type": "consumable", "effect": "unlock", "description": "Opens locks.", "aliases": ["003_Lockpick", "lock pick", "pick", "lp"] },
+  { "id": "phoenix_potion", "name": "Phoenix Potion", "type": "consumable", "effect": "revive", "description": "Revives to full HP.", "aliases": ["004_PhoenixPotion", "phoenix pot", "pp"] },
   { "id": "tent", "name": "Tent", "type": "consumable", "effect": "full_rest", "description": "Full party restore.", "aliases": ["005_Tent"] }
 ]
