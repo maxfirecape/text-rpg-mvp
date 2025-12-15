@@ -3,6 +3,7 @@ import { useGameStore } from './store/gameStore';
 import { processCommand } from './engine/parser'; 
 import roomsData from './data/rooms.json';
 import skillsData from './data/skills.json';
+import itemsData from './data/items.json';
 
 const AUDIO_COMBAT = "/battle.mp3"; 
 const AUDIO_AMBIANCE = "/dungeon.mp3";
@@ -13,6 +14,7 @@ function App() {
   const activeEnemies = useGameStore(state => state.activeEnemies);
   const isCombat = useGameStore(state => state.isCombat);
   const credits = useGameStore(state => state.credits);
+  const inventory = useGameStore(state => state.inventory);
   const currentRoomId = useGameStore(state => state.currentRoomId);
   const tick = useGameStore(state => state.tick);
   const battleQueue = useGameStore(state => state.battleQueue);
@@ -25,6 +27,12 @@ function App() {
   const audioRef = useRef<HTMLAudioElement>(new Audio());
 
   const currentRoom = roomsData.find(r => r.id === currentRoomId);
+
+  // --- HELPER: FIND SHORTEST ALIAS ---
+  const getShortAlias = (aliases?: string[]) => {
+      if (!aliases || aliases.length === 0) return "";
+      return aliases.reduce((a, b) => a.length <= b.length ? a : b);
+  };
 
   useEffect(() => {
     const interval = setInterval(() => tick(1), 1000);
@@ -57,7 +65,6 @@ function App() {
     return activeEnemies.map((enemy, index) => (
       <div key={enemy.id} style={{ width: '100%', marginBottom: '6px', opacity: enemy.hp <= 0 ? 0.3 : 1 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#ffaaaa' }}>
-          {/* ADDED INDEX INDICATOR (1), (2), (3) */}
           <span>{enemy.name} <span style={{color:'cyan'}}>({index + 1})</span> {enemy.hp <= 0 && "(DEAD)"}</span>
           <span>{enemy.hp}/{enemy.maxHp}</span>
         </div>
@@ -81,6 +88,10 @@ function App() {
       
       if (!activeChar) return <div style={{ color: '#666', fontStyle: 'italic', fontSize:'0.9em' }}>Waiting for turn...</div>;
 
+      // Count Inventory Items for display
+      const invCounts: {[key:string]:number} = {};
+      inventory.forEach(id => { invCounts[id] = (invCounts[id] || 0) + 1; });
+
       return (
         <div>
           <h4 style={{ color: 'var(--sys-cyan)', margin: '0 0 5px 0', borderBottom:'1px solid #333' }}>
@@ -90,16 +101,31 @@ function App() {
             <div style={{ fontSize:'0.85em', color:'#ccc' }}>Attack (a)</div>
             <div style={{ fontSize:'0.85em', color:'#ccc' }}>Defend (d)</div>
           </div>
-          <div>
+          <div style={{ marginBottom: '10px' }}>
             <div style={{ fontWeight:'bold', color:'white', fontSize:'0.8em' }}>SKILLS</div>
             {activeChar.unlockedSkills.map(sid => {
                 // @ts-ignore
                 const sk = skillsData.find(s => s.id === sid);
                 return sk ? (
                   <div key={sid} style={{ fontSize:'0.85em', color:'#00eaff' }}>
-                     {sk.name} <span style={{color:'#888', fontSize:'0.8em'}}>({sk.cost} SP)</span>
+                     {sk.name} <span style={{color:'#888', fontSize:'0.8em'}}>({getShortAlias(sk.aliases)})</span>
                   </div>
                 ) : null;
+            })}
+          </div>
+          <div>
+            <div style={{ fontWeight:'bold', color:'white', fontSize:'0.8em' }}>ITEMS</div>
+            {Object.keys(invCounts).map(iid => {
+                // @ts-ignore
+                const it = itemsData.find(i => i.id === iid);
+                if (it && it.type === 'consumable') {
+                    return (
+                        <div key={iid} style={{ fontSize:'0.85em', color:'#00eaff' }}>
+                            {it.name} x{invCounts[iid]} <span style={{color:'#888', fontSize:'0.8em'}}>({getShortAlias(it.aliases)})</span>
+                        </div>
+                    )
+                }
+                return null;
             })}
           </div>
           {battleQueue.length > 1 && (
@@ -162,7 +188,6 @@ function App() {
             {party.map((char, index) => (
               <div key={char.id} style={{ marginBottom: '6px', padding: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
                 <div style={{ fontWeight: 'bold', fontSize:'0.9em', display:'flex', justifyContent:'space-between' }}>
-                    {/* ADDED INDEX INDICATOR (1) */}
                     <span>
                         {char.name} <span style={{color:'cyan'}}>({index + 1})</span> 
                         <span style={{fontSize:'0.8em', color:'#aaa', marginLeft:'5px'}}>{char.classId.substring(0,3).toUpperCase()}</span>

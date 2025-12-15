@@ -1,10 +1,10 @@
 [
-  { "id": "steal", "name": "Steal", "cost": 1, "type": "utility", "subType": "steal", "description": "Takes one item from enemy loot.", "aliases": ["rob", "pickpocket", "st"], "classes": ["rogue"] },
-  { "id": "precision_strike", "name": "Precision Strike", "cost": 1, "type": "physical", "formula": "weapon + 2d4", "hitChanceBonus": 100, "description": "Always hits. Weapon + 2d4.", "aliases": ["pr", "precision"], "classes": ["rogue"] },
+  { "id": "steal", "name": "Steal", "cost": 1, "type": "utility", "subType": "steal", "description": "Takes item from enemy loot.", "aliases": ["st", "rob"], "classes": ["rogue"] },
+  { "id": "precision_strike", "name": "Precision Strike", "cost": 1, "type": "physical", "formula": "weapon + 2d4", "hitChanceBonus": 100, "description": "Always hits. Weapon + 2d4.", "aliases": ["pr", "ps"], "classes": ["rogue"] },
   { "id": "ghost_step", "name": "Ghost Step", "cost": 1, "type": "buff", "stat": "dex", "val": 2.0, "duration": 60, "description": "Doubles DEX for 60s.", "aliases": ["gs", "ghost"], "classes": ["rogue"] },
   { "id": "skeleton_key", "name": "Skeleton Key", "cost": 1, "type": "utility", "subType": "unlock", "description": "Unlocks doors/chests.", "aliases": ["sk", "key"], "classes": ["rogue"] },
   { "id": "double_strike", "name": "Double Strike", "cost": 1, "type": "physical", "val": 2.0, "description": "Deals 2x Weapon Damage.", "aliases": ["ds", "double"], "classes": ["rogue"] },
-  { "id": "poison_blade", "name": "Poison Tipped Blade", "cost": 1, "type": "physical", "val": 1.0, "status": "poison", "chance": 1.0, "duration": 30, "description": "Weapon Dmg + Poison (30s).", "aliases": ["ptb", "poison"], "classes": ["rogue"] },
+  { "id": "poison_blade", "name": "Poison Tipped Blade", "cost": 1, "type": "physical", "val": 1.0, "status": "poison", "chance": 1.0, "duration": 30, "description": "Weapon Dmg + Poison (30s).", "aliases": ["ptb", "pb", "poison"], "classes": ["rogue"] },
   { "id": "auto_counter", "name": "Auto Counter", "cost": 1, "type": "buff", "description": "PLACEHOLDER", "aliases": ["ac", "counter"], "classes": ["rogue"] },
   { "id": "disable", "name": "Disable", "cost": 1, "type": "debuff", "status": "disabled", "duration": 20, "description": "Disables enemy for 20s.", "aliases": ["dis", "stop"], "classes": ["rogue"] },
   { "id": "critical_strike", "name": "Critical Strike", "cost": 1, "type": "physical", "val": 1.5, "description": "PLACEHOLDER", "aliases": ["cs", "crit"], "classes": ["rogue"] },
@@ -20,9 +20,9 @@
   { "id": "super_evade_up", "name": "Super Evade Up", "cost": 2, "type": "buff", "stat": "dex", "val": 2.0, "duration": 40, "description": "Doubles DEX for 40s.", "aliases": ["seu"], "classes": ["fighter"] },
   { "id": "super_armor_up", "name": "Super Armor Up", "cost": 2, "type": "buff", "stat": "def_mult", "val": 1.3, "duration": 45, "description": "Armor +30% for 45s.", "aliases": ["sau"], "classes": ["fighter"] },
 
-  { "id": "fire", "name": "Fire", "cost": 1, "type": "magic", "formula": "2d6 * [LVL]", "status": "burn", "chance": 0.5, "duration": 30, "description": "2d6/Lvl. 50% Burn.", "aliases": ["f", "fireball", "burn"], "classes": ["wizard"] },
-  { "id": "freeze", "name": "Freeze", "cost": 1, "type": "magic", "formula": "2d6 * [LVL]", "status": "frozen", "chance": 0.5, "duration": 10, "description": "2d6/Lvl. 50% Freeze.", "aliases": ["fr", "frz", "ice"], "classes": ["wizard"] },
-  { "id": "shock", "name": "Shock", "cost": 1, "type": "magic", "formula": "3d4 * [LVL]", "status": "stun", "chance": 0.8, "duration": 5, "description": "3d4/Lvl. 80% Stun.", "aliases": ["s", "bolt", "zap"], "classes": ["wizard"] },
+  { "id": "fire", "name": "Fire", "cost": 1, "type": "magic", "formula": "2d6 * [LVL]", "status": "burn", "chance": 0.5, "duration": 30, "description": "2d6/Lvl. 50% Burn.", "aliases": ["f", "fireball"], "classes": ["wizard"] },
+  { "id": "freeze", "name": "Freeze", "cost": 1, "type": "magic", "formula": "2d6 * [LVL]", "status": "frozen", "chance": 0.5, "duration": 10, "description": "2d6/Lvl. 50% Freeze.", "aliases": ["fr", "frz"], "classes": ["wizard"] },
+  { "id": "shock", "name": "Shock", "cost": 1, "type": "magic", "formula": "3d4 * [LVL]", "status": "stun", "chance": 0.8, "duration": 5, "description": "3d4/Lvl. 80% Stun.", "aliases": ["s", "bolt"], "classes": ["wizard"] },
   { "id": "flame_wall", "name": "Flame Wall", "cost": 2, "type": "magic", "target": "all_enemies", "formula": "1d10 * [LVL]", "status": "burn", "chance": 0.4, "duration": 30, "description": "1d10/Lvl (AoE). 40% Burn.", "aliases": ["fw", "wall"], "classes": ["wizard"] },
   { "id": "shock_wall", "name": "Shock Wall", "cost": 2, "type": "magic", "target": "all_enemies", "formula": "2d6 * [LVL]", "status": "stun", "chance": 0.6, "duration": 5, "description": "2d6/Lvl (AoE). 60% Stun.", "aliases": ["sw", "shockwall"], "classes": ["wizard"] },
 

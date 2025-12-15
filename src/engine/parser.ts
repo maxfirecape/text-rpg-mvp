@@ -275,9 +275,17 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
       const parts = cleanArgs.split(" ");
       if (parts.length > 1) {
           const last = parts[parts.length - 1].toLowerCase();
+          // Check if last word is a valid target shortcut (1, 2, 3, a, b, c) or full name segment
           if (/^[a-c1-3]$/.test(last) || last.startsWith('hero') || last.startsWith('guard')) {
               targetStr = parts.pop()!;
               spellStr = parts.join(" ");
+          } else {
+              // Try to see if last word resolves to an index?
+              // This covers cases where regex misses but resolveEnemyIndex hits.
+              if (resolveEnemyIndex(last, currentState.activeEnemies) !== -1 || resolvePartyIndex(last, currentState.party) !== -1) {
+                  targetStr = parts.pop()!;
+                  spellStr = parts.join(" ");
+              }
           }
       }
     }
@@ -295,8 +303,10 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
 
     const isFriendly = skill && (skill.type === 'heal' || skill.type === 'buff' || skill.type === 'revive' || skill.type === 'restore_mp');
     
+    // If friendly, try resolving against party first
     if (isFriendly) {
         let tIdx = resolvePartyIndex(targetStr, currentState.party);
+        // Default to self if targetStr is empty or invalid
         if (tIdx === -1 && !targetStr) tIdx = actorIndex;
         
         if (tIdx !== -1) {
@@ -305,6 +315,7 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
         }
     }
 
+    // Default to enemy if not friendly OR if friendly target wasn't found in party
     const enemyTargetIdx = resolveEnemyIndex(targetStr || "", currentState.activeEnemies);
     store.getState().performAction(actorIndex, actionId, enemyTargetIdx, 'enemy');
   }
