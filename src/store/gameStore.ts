@@ -199,23 +199,19 @@ export const useGameStore = create<GameState>((set, get) => ({
             nextQueue.push(entity.id);
         }
 
-        // --- DoT (Burn/Poison) ---
         const dotEffects = entity.status.filter((s: StatusEffect) => ['burn', 'poison'].includes(s.type));
         if (dotEffects.length > 0) {
             const dmg = dotEffects.length; 
             entity.hp = Math.max(0, entity.hp - dmg);
         }
 
-        // --- NEW: HoT (Healing Rain / Group Rain) ---
         const hotEffects = entity.status.filter((s: StatusEffect) => ['Healing Rain', 'Group Rain'].includes(s.type));
         if (hotEffects.length > 0) {
             hotEffects.forEach((s: StatusEffect) => {
-                // Apply the 'val' stored in the status (e.g. 8 HP)
                 const healAmt = s.val || 1; 
                 entity.hp = Math.min(entity.maxHp, entity.hp + healAmt);
             });
         }
-        // --------------------------------------------
 
         const activeStatus = entity.status.filter((eff: StatusEffect) => {
             eff.duration -= dt;
@@ -247,19 +243,36 @@ export const useGameStore = create<GameState>((set, get) => ({
          if(livingTargets.length > 0) {
            const targetIndex = Math.floor(Math.random() * livingTargets.length);
            const targetId = livingTargets[targetIndex].id;
-           const mult = 0.7 + Math.random()*0.4;
-           const baseDmg = Math.floor(Math.random()*4)+1 + Math.floor(e.stats.str/2);
            
            nextParty = nextParty.map((p: Character) => {
                if (p.id !== targetId) return p;
+               
+               // --- ENEMY HIT CALCULATION ---
+               const enemyAccuracy = 85; // Default Enemy Hit %
+               const playerStats = get().getDerivedStats(p); // Use gear stats
+               const evadeChance = playerStats.dex * 0.5; // DEX / 2
+               const hitChance = enemyAccuracy - evadeChance;
+
+               // Status Effect Override (50% chance to miss if Evade Up is active)
+               if(p.status.some((st: StatusEffect) => st.type === 'evade_up') && Math.random() > 0.5) {
+                   newLog.push(`${e.name} attacks ${p.name} but MISSES (Evade Up)!`);
+                   return p;
+               }
+
+               // Normal Hit/Miss Roll
+               if (Math.random() * 100 > hitChance) {
+                   newLog.push(`${e.name} attacks ${p.name} but MISSES!`);
+                   return p;
+               }
+               // ----------------------------
+
+               // Damage Calc
+               const mult = 0.7 + Math.random()*0.4;
+               const baseDmg = Math.floor(Math.random()*4)+1 + Math.floor(e.stats.str/2);
                let reduct = 0;
                const arm = getItem(p.equipment.armor);
                if(arm?.defense) reduct += Math.random()*(arm.defense.max - arm.defense.min) + arm.defense.min;
                
-               if(p.status.some((st: StatusEffect) => st.type === 'evade_up') && Math.random() > 0.5) {
-                   newLog.push(`${e.name} attacks ${p.name} but MISSES!`);
-                   return p;
-               }
                const dmg = Math.max(1, Math.floor((baseDmg * mult) * (1 - reduct)));
                newLog.push(`${e.name} hits ${p.name} for ${dmg} DMG!`);
                return { ...p, hp: Math.max(0, p.hp - dmg) };
@@ -365,30 +378,19 @@ export const useGameStore = create<GameState>((set, get) => ({
          t.mp = Math.min(t.maxMp, t.mp + amt);
          logMsg = `${actor.name} restores ${amt} SP to ${t.name}.`;
       }
-      // --- UPDATED HEAL LOGIC (Instant vs HoT vs Party) ---
       else if(skill.type === 'heal' || skill.type === 'revive') {
-         
-         // 1. DETERMINE TARGETS (Party vs Single)
          const targets = (skill.target === 'party') ? p : [p[tIdx]];
-         
          targets.forEach(t => {
-             // 2. CHECK FOR HoT (Duration > 0)
              if (skill.duration && skill.duration > 0) {
                  const amt = calcVal(skill.formula || "[WIS]", actorStats, actor.level);
-                 t.status.push({ 
-                     type: skill.name, // e.g. "Healing Rain"
-                     duration: skill.duration, 
-                     val: amt // Store the calculated heal amount
-                 });
-             } 
-             // 3. INSTANT HEAL
-             else {
+                 t.status.push({ type: skill.name, duration: skill.duration, val: amt });
+             } else {
                  let amt = 0;
                  if(skill.formula?.includes('%')) { 
                     if(skill.id === 'max_revive' || skill.formula === '100%') amt = t.maxHp;
                     else amt = Math.floor(t.maxHp * 0.5) + calcVal("2d4", actorStats);
                     
-                    if(t.hp <= 0) t.hp = amt; // Revive
+                    if(t.hp <= 0) t.hp = amt; 
                     else t.hp = Math.min(t.maxHp, t.hp + amt);
                  } else {
                     amt = calcVal(skill.formula || "[WIS]", actorStats, actor.level);
@@ -396,19 +398,24 @@ export const useGameStore = create<GameState>((set, get) => ({
                  }
              }
          });
-
-         if (skill.duration && skill.duration > 0) {
-             logMsg = `${actor.name} casts ${skill.name}! (Regen active)`;
-         } else {
-             logMsg = `${actor.name} casts ${skill.name}.`;
-         }
+         logMsg = `${actor.name} casts ${skill.name}.`;
       }
-      // ----------------------------------------------------
       else { 
          const t = e[tIdx];
          if (!t) return { log: [...s.log, "Target not found."] };
          if (t.hp <= 0) return { log: [...s.log, "Target is already dead."] };
          
+         // --- PLAYER ACCURACY CHECK ---
+         const hitChance = actor.stats.hitChance + (skill.hitChanceBonus || 0);
+         const targetDex = t.stats.dex; // Enemy DEX (15)
+         const evadeChance = targetDex * 0.5;
+         const finalHitChance = hitChance - evadeChance;
+
+         if (Math.random() * 100 > finalHitChance) {
+             return { party: p, inventory: inv, battleQueue: newQueue, log: [...s.log, `${actor.name} attacks ${t.name} but MISSES!`] };
+         }
+         // ----------------------------
+
          let formula = skill.formula;
          if (skill.type === 'physical' && !formula) {
              const weapon = getItem(actor.equipment.weapon);
