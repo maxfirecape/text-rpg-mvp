@@ -18,7 +18,8 @@
         "chargeTime": 1.0,
         "staggerChance": 1.0,
         "msgPrep": "The Guard raises his baton!",
-        "msgHit": "The Guard strikes!"
+        "msgHit": "The Guard strikes!",
+        "damage": "5-12"
       }
     ]
   },
@@ -41,7 +42,8 @@
         "chargeTime": 0.5,
         "staggerChance": 0.5,
         "msgPrep": "Warden readies his weapon!",
-        "msgHit": "Warden attacks!"
+        "msgHit": "Warden attacks!",
+        "damage": "7-14"
       },
       {
         "name": "Heavy Attack",
@@ -51,6 +53,7 @@
         "staggerChance": 0.5,
         "msgPrep": "Warden yells a battle cry!",
         "msgHit": "Warden attacks!",
+        "damage": "7-14",
         "val": 1.5
       },
       {
@@ -94,7 +97,8 @@
         "chargeTime": 0.5,
         "staggerChance": 0.5,
         "msgPrep": "Harpie brandishes its fangs!",
-        "msgHit": "Harpie attacks!"
+        "msgHit": "Harpie attacks!",
+        "damage": "8-12"
       },
       {
         "name": "Scratch",
@@ -104,7 +108,7 @@
         "staggerChance": 0.0,
         "msgPrep": "Harpie brandishes its claws!",
         "msgHit": "Harpie attacks! Everyone grits their teeth.",
-        "val": 0.35
+        "damage": "3"
       },
       {
         "name": "Reinforcements",

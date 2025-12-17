@@ -91,13 +91,14 @@ export type Class = {
 export type EnemyMove = {
   name: string;
   type: 'attack' | 'heavy_attack' | 'aoe_attack' | 'heal' | 'summon';
-  chance: number;       // % chance (0-100)
-  chargeTime: number;   // Seconds to wait before executing
-  staggerChance: number;// Chance to be interrupted if hit (0.0 - 1.0)
+  chance: number;       
+  chargeTime: number;   
+  staggerChance: number;
   msgPrep: string;
   msgHit: string;
   val?: number;         // Multiplier or Heal amount
-  summonId?: string;    // ID of enemy to summon
+  damage?: string;      // <--- NEW: "5-12", "3", etc.
+  summonId?: string;    
 };
 
 export type Enemy = {
@@ -117,8 +118,8 @@ export type Enemy = {
   // AI Fields
   moves: EnemyMove[];
   currentMove?: EnemyMove; 
-  phases?: string[]; // Track "enraged", "tired" flags
-  spawnRequest?: string; // Internal flag for summoning
+  phases?: string[]; 
+  spawnRequest?: string; 
 };
 
 // 7. INTERACTABLES

@@ -7,7 +7,19 @@ import classesDataJson from '../data/classes.json';
 
 const classesData = classesDataJson as unknown as Class[];
 const allEnemies = enemiesData as unknown as Enemy[];
+const allSkills = skillsData as unknown as Skill[];
 const getItem = (id: string | null) => itemsData.find(i => i.id === id) as Item | undefined;
+
+// --- HELPER: ENEMY DAMAGE PARSER ---
+const getEnemyDamage = (damageStr?: string): number => {
+    if (!damageStr) return 0;
+    if (damageStr.includes('-')) {
+        const [min, max] = damageStr.split('-').map(Number);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+    return parseInt(damageStr) || 0;
+};
+// -----------------------------------
 
 const calcVal = (formula: string, stats: Stats, lvl: number = 1): number => {
   try {
@@ -89,39 +101,19 @@ export const useGameStore = create<GameState>((set, get) => ({
       currentRoomId: s.currentRoomId,
       lootedChests: s.lootedChests
     };
-    try {
-        localStorage.setItem('rpg_save_v1', JSON.stringify(data));
-        set(state => ({ log: [...state.log, "Game Saved."] }));
-    } catch (e) {
-        console.error("Save failed", e);
-        set(state => ({ log: [...state.log, "Save Failed!"] }));
-    }
+    localStorage.setItem('rpg_save_v1', JSON.stringify(data));
+    set(state => ({ log: [...state.log, "Game Saved."] }));
   },
 
   loadGame: () => {
     const raw = localStorage.getItem('rpg_save_v1');
     if (!raw) return false;
-    try {
-      const data = JSON.parse(raw);
-      set({
-        party: data.party,
-        inventory: data.inventory,
-        credits: data.credits,
-        currentRoomId: data.currentRoomId,
-        lootedChests: data.lootedChests || [],
-        log: ["Game Loaded.", `Welcome back to ${data.currentRoomId}.`],
-        isCombat: false, 
-        activeEnemies: [],
-        battleQueue: [],
-        isGameOver: false,
-        isInputLocked: false,
-        activeDialogue: null
-      });
-      return true;
-    } catch (e) {
-      console.error("Save file corrupted", e);
-      return false;
-    }
+    const data = JSON.parse(raw);
+    set({
+      party: data.party, inventory: data.inventory, credits: data.credits, currentRoomId: data.currentRoomId,
+      lootedChests: data.lootedChests || [], log: ["Game Loaded."], isCombat: false, activeEnemies: [], battleQueue: [], isGameOver: false
+    });
+    return true;
   },
 
   getDerivedStats: (c: Character) => {
@@ -140,52 +132,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     return s;
   },
 
-  equipItem: (idx, id) => set(s => {
-    const p = [...s.party]; const c = p[idx]; const item = getItem(id);
-    if(!item || !s.inventory.includes(id)) return {};
-    const inv = [...s.inventory]; inv.splice(inv.indexOf(id), 1);
-    if(item.type === 'weapon') { if(c.equipment.weapon) inv.push(c.equipment.weapon); c.equipment.weapon = id; }
-    else if(item.type === 'armor') { if(c.equipment.armor) inv.push(c.equipment.armor); c.equipment.armor = id; }
-    else if(item.type === 'accessory') {
-      if(c.equipment.accessories.length >= 3) inv.push(c.equipment.accessories.shift()!);
-      c.equipment.accessories.push(id);
-    }
-    return { party: p, inventory: inv, log: [...s.log, `${c.name} equipped ${item.name}.`] };
-  }),
-
-  unequipItem: (idx, slot, i=0) => set(s => {
-    const p = [...s.party]; const c = p[idx]; const inv = [...s.inventory];
-    let r: string|null = null;
-    if(slot==='weapon') { r=c.equipment.weapon; c.equipment.weapon=null; }
-    else if(slot==='armor') { r=c.equipment.armor; c.equipment.armor=null; }
-    else if(slot==='accessory') r=c.equipment.accessories.splice(i,1)[0];
-    if(r) inv.push(r);
-    return { party: p, inventory: inv };
-  }),
-
+  equipItem: (idx, id) => set(s => { const p = [...s.party]; const c = p[idx]; const item = getItem(id); if(!item || !s.inventory.includes(id)) return {}; const inv = [...s.inventory]; inv.splice(inv.indexOf(id), 1); if(item.type === 'weapon') { if(c.equipment.weapon) inv.push(c.equipment.weapon); c.equipment.weapon = id; } else if(item.type === 'armor') { if(c.equipment.armor) inv.push(c.equipment.armor); c.equipment.armor = id; } else if(item.type === 'accessory') { if(c.equipment.accessories.length >= 3) inv.push(c.equipment.accessories.shift()!); c.equipment.accessories.push(id); } return { party: p, inventory: inv, log: [...s.log, `${c.name} equipped ${item.name}.`] }; }),
+  unequipItem: (idx, slot, i=0) => set(s => { const p = [...s.party]; const c = p[idx]; const inv = [...s.inventory]; let r: string|null = null; if(slot==='weapon') { r=c.equipment.weapon; c.equipment.weapon=null; } else if(slot==='armor') { r=c.equipment.armor; c.equipment.armor=null; } else if(slot==='accessory') r=c.equipment.accessories.splice(i,1)[0]; if(r) inv.push(r); return { party: p, inventory: inv }; }),
   useItem: (itemId, targetIdx = 0) => set(s => {
       const inv = [...s.inventory];
       const idx = inv.indexOf(itemId);
       if (idx === -1) return { log: [...s.log, "You don't have that."] };
-
       const item = getItem(itemId);
       if (!item || item.type !== 'consumable') return { log: [...s.log, "You can't use that."] };
-
       const p = [...s.party];
       const target = p[targetIdx];
-      
       let msg = `Used ${item.name}.`;
-      
-      if (item.effect?.startsWith('heal_')) {
-          const formula = item.effect.replace('heal_', '');
-          const val = calcVal(formula, target.stats, target.level);
-          target.hp = Math.min(target.maxHp, target.hp + val);
-          msg = `Healed ${target.name} for ${val} HP.`;
-      } else if (item.effect === 'restore_skill') {
-          target.mp = Math.min(target.maxMp, target.mp + 2);
-          msg = `Restored SP to ${target.name}.`;
-      }
-
+      if (item.effect?.startsWith('heal_')) { const val = calcVal(item.effect.replace('heal_', ''), target.stats, target.level); target.hp = Math.min(target.maxHp, target.hp + val); msg = `Healed ${target.name} for ${val} HP.`; }
+      else if (item.effect === 'restore_skill') { target.mp = Math.min(target.maxMp, target.mp + 2); msg = `Restored SP to ${target.name}.`; }
       inv.splice(idx, 1);
       return { party: p, inventory: inv, log: [...s.log, msg] };
   }),
@@ -204,12 +163,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     let newLog = [...s.log];
     let nextParty = [...s.party]; 
 
-    // 1. Process Party Logic
     const processEntityTick = (entity: any) => {
         if (entity.hp <= 0) return entity;
         let newTimer = (entity.atbTimer || 0);
         if (newTimer > 0) newTimer -= dt;
-        if (newTimer <= 0 && !nextQueue.includes(entity.id) && entity.isPlayerControlled) nextQueue.push(entity.id);
+
+        const isStunned = entity.status.some((x: StatusEffect) => ['stun','frozen','disabled'].includes(x.type));
+
+        if (newTimer <= 0 && !nextQueue.includes(entity.id) && entity.isPlayerControlled && !isStunned) {
+            nextQueue.push(entity.id);
+        }
 
         const dotEffects = entity.status.filter((s: StatusEffect) => ['burn', 'poison'].includes(s.type));
         if (dotEffects.length > 0) {
@@ -220,99 +183,95 @@ export const useGameStore = create<GameState>((set, get) => ({
         const hotEffects = entity.status.filter((s: StatusEffect) => ['Healing Rain', 'Group Rain'].includes(s.type));
         if (hotEffects.length > 0) hotEffects.forEach((s: StatusEffect) => { entity.hp = Math.min(entity.maxHp, entity.hp + (s.val || 1)); });
 
-        const activeStatus = entity.status.filter((eff: StatusEffect) => {
-            eff.duration -= dt;
-            return eff.duration > 0;
-        });
+        const activeStatus = entity.status
+            .map((eff: StatusEffect) => ({ ...eff, duration: eff.duration - dt }))
+            .filter((eff: StatusEffect) => eff.duration > 0);
         
-        if (activeStatus.length !== entity.status.length || newTimer !== entity.atbTimer || dotEffects.length > 0 || hotEffects.length > 0) {
-            return { ...entity, status: activeStatus, atbTimer: Math.max(0, newTimer) };
-        }
-        return entity;
+        return { ...entity, status: activeStatus, atbTimer: Math.max(0, newTimer) };
     };
+
     nextParty = nextParty.map(processEntityTick);
 
-    // 2. ENEMY AI
     let nextEnemies = s.activeEnemies.map((e: Enemy) => {
-      if(e.hp <= 0 || e.status.some((x: StatusEffect) => ['stun','frozen','disabled'].includes(x.type))) return e;
-
-      let newTimer = (e.atbTimer || 0) - dt;
-      let newState = e.state;
-      let currentMove = e.currentMove;
-      let phases = e.phases || [];
-
-      // DoT Logic for Enemies
-      const dotEffects = e.status.filter((s: StatusEffect) => ['burn', 'poison'].includes(s.type));
-      if (dotEffects.length > 0) {
-          const dmg = dotEffects.length; 
-          e.hp = Math.max(0, e.hp - dmg);
-          if (Math.random() > 0.8) newLog.push(`${e.name} burns/suffers for ${dmg} damage.`);
+      let processedE = processEntityTick(e);
+      
+      if(processedE.hp <= 0 || processedE.status.some((x: StatusEffect) => ['stun','frozen','disabled'].includes(x.type))) {
+          return processedE;
       }
 
-      // --- WARDEN PHASE LOGIC ---
+      let newTimer = processedE.atbTimer;
+      let newState = processedE.state;
+      let currentMove = processedE.currentMove;
+      let phases = processedE.phases || [];
+
       if (e.id.includes('warden')) {
-          const hpPercent = e.hp / e.maxHp;
+          const hpPercent = processedE.hp / processedE.maxHp;
           if (hpPercent <= 0.60 && !phases.includes('enraged')) {
               phases.push('enraged');
-              newLog.push(`${e.name} is getting heated! (BERZERK)`);
-              e.status.push({ type: 'berzerk', duration: 999, val: 1.5, stat: 'dmg_mult' });
+              newLog.push(`|E| ${processedE.name} is getting heated! (BERZERK)`);
+              processedE.status.push({ type: 'berzerk', duration: 999, val: 1.5, stat: 'dmg_mult' });
           } else if (hpPercent <= 0.40 && !phases.includes('tired')) {
               phases.push('tired');
-              newLog.push(`${e.name} seems out of breath.`);
+              newLog.push(`|E| ${processedE.name} seems out of breath.`);
           } else if (hpPercent <= 0.20 && !phases.includes('staggered')) {
               phases.push('staggered');
-              newLog.push(`${e.name} staggers!`);
+              newLog.push(`|E| ${processedE.name} staggers!`);
           }
       }
       
-      // --- GENERIC LOW HEALTH LOGIC (30%) ---
-      if (!phases.includes('low_hp_msg') && (e.hp / e.maxHp) <= 0.30) {
+      if (!phases.includes('low_hp_msg') && (processedE.hp / processedE.maxHp) <= 0.30) {
           phases.push('low_hp_msg');
-          newLog.push(e.messages?.lowHealth || `${e.name} stumbles!`);
+          newLog.push(processedE.messages?.lowHealth || `|E| ${processedE.name} stumbles!`);
       }
 
-      // --- STATE MACHINE ---
-      if(e.state === 'idle' && newTimer <= 0) {
+      if(newState === 'idle' && newTimer <= 0) {
          const roll = Math.random() * 100;
          let accumulated = 0;
          let selectedMove: EnemyMove | undefined;
          
-         if (!e.moves || e.moves.length === 0) {
-             selectedMove = { name: "Attack", type: "attack", chance: 100, chargeTime: 1.0, staggerChance: 0.5, msgPrep: "Enemy readies weapon!", msgHit: "Enemy attacks!" };
-         } else {
-             for (const move of e.moves) {
-                 accumulated += move.chance;
-                 if (roll <= accumulated) {
-                     selectedMove = move;
-                     break;
-                 }
-             }
+         const moveList = processedE.moves && processedE.moves.length > 0 ? processedE.moves : [{ name: "Attack", type: "attack", chance: 100, chargeTime: 1.0, staggerChance: 0.5, msgPrep: "Enemy readies weapon!", msgHit: "Enemy attacks!" } as EnemyMove];
+
+         for (const move of moveList) {
+             accumulated += move.chance;
+             if (roll <= accumulated) { selectedMove = move; break; }
          }
          
          if (selectedMove) {
-             newLog.push(selectedMove.msgPrep);
+             newLog.push(`|E| ${selectedMove.msgPrep}`);
              newState = 'charging';
              newTimer = selectedMove.chargeTime; 
              currentMove = selectedMove;
          }
       } 
-      else if(e.state === 'charging' && newTimer <= 0 && currentMove) {
-         newLog.push(currentMove.msgHit);
+      else if(newState === 'charging' && newTimer <= 0 && currentMove) {
+         newLog.push(`|E| ${currentMove.msgHit}`);
          
          if (currentMove.type === 'summon' && currentMove.summonId) {
-             e.spawnRequest = currentMove.summonId; 
+             processedE.spawnRequest = currentMove.summonId; 
          } else if (currentMove.type === 'heal') {
              const healAmt = Math.floor((Math.random() * 6 + 1 + Math.random() * 6 + 1) * (currentMove.val || 2));
-             e.hp = Math.min(e.maxHp, e.hp + healAmt);
-             newLog.push(`${e.name} healed for ${healAmt}.`);
+             processedE.hp = Math.min(processedE.maxHp, processedE.hp + healAmt);
+             newLog.push(`|E| ${processedE.name} healed for ${healAmt}.`);
          } else {
              const livingTargets = nextParty.filter((p: Character) => p.hp > 0);
              if(livingTargets.length > 0) {
                const targets = currentMove.type === 'aoe_attack' ? livingTargets : [livingTargets[Math.floor(Math.random()*livingTargets.length)]];
                targets.forEach(target => {
                    const mult = currentMove?.val || 1.0;
-                   const bzk = e.status.find(s => s.type === 'berzerk')?.val || 1.0;
-                   const baseDmg = Math.floor((Math.random()*4+1 + Math.floor(e.stats.str/2)) * mult * bzk);
+                   const bzk = processedE.status.find((s:any) => s.type === 'berzerk')?.val || 1.0;
+                   
+                   // --- NEW DAMAGE CALC ---
+                   let baseDmg = 0;
+                   // Use specific range if defined, otherwise fallback to stats
+                   if (currentMove?.damage) {
+                       baseDmg = getEnemyDamage(currentMove.damage);
+                   } else {
+                       baseDmg = Math.floor(Math.random()*4+1 + Math.floor(processedE.stats.str/2));
+                   }
+                   
+                   // Apply Multipliers
+                   baseDmg = Math.floor(baseDmg * mult * bzk);
+                   // -----------------------
                    
                    let reduct = 0;
                    const arm = getItem(target.equipment.armor);
@@ -320,7 +279,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                    
                    const dmg = Math.max(1, Math.floor(baseDmg * (1 - reduct)));
                    target.hp = Math.max(0, target.hp - dmg);
-                   newLog.push(`${e.name} hit ${target.name} for ${dmg}.`);
+                   newLog.push(`|E| ${processedE.name} hit ${target.name} for ${dmg} (${target.hp} HP remain).`);
                });
              }
          }
@@ -330,26 +289,22 @@ export const useGameStore = create<GameState>((set, get) => ({
          currentMove = undefined;
       }
       
-      return { ...e, atbTimer: newTimer, state: newState, currentMove, phases };
+      return { ...processedE, atbTimer: newTimer, state: newState, currentMove, phases };
     });
 
-    // --- HANDLE SPAWNS ---
     const spawns: Enemy[] = [];
     nextEnemies = nextEnemies.map(e => {
         if ((e as any).spawnRequest) {
             const template = allEnemies.find(x => x.id === (e as any).spawnRequest);
             if (template) {
-                // --- FIX: INITIALIZE SPAWN STATE CORRECTLY ---
                 spawns.push({ 
                     ...template, 
                     id: `e${Date.now()}_${Math.random()}`, 
                     name: `${template.name} (Add)`, 
                     hp: template.hp, maxHp: template.maxHp, status: [], moves: template.moves,
-                    state: 'idle', // Crucial
-                    atbTimer: 3,   // Crucial
-                    phases: []
+                    state: 'idle', atbTimer: 3, phases: []
                 });
-                newLog.push(`A ${template.name} joined the battle!`);
+                newLog.push(`|E| A ${template.name} joined the battle!`);
             }
             delete (e as any).spawnRequest;
         }
@@ -363,7 +318,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const cleanQueue = nextQueue.filter(qid => {
         const c = nextParty.find(p => p.id === qid);
-        return c && c.hp > 0;
+        const isStunned = c?.status.some((s:any) => ['stun','frozen','disabled'].includes(s.type));
+        return c && c.hp > 0 && !isStunned;
     });
 
     return { party: nextParty, activeEnemies: nextEnemies, log: newLog, battleQueue: cleanQueue };
@@ -375,6 +331,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       let inv = [...s.inventory];
 
       if(actor.hp <= 0) return { log: [...s.log, `${actor.name} is down!`] };
+      
+      const isStunned = actor.status.some((s:any) => ['stun','frozen','disabled'].includes(s.type));
+      if (isStunned) return { log: [...s.log, `${actor.name} cannot move!`] };
+
       if (s.battleQueue[0] !== actor.id) {
           return { log: [...s.log, `It is not ${actor.name}'s turn!`] };
       }
@@ -485,7 +445,7 @@ export const useGameStore = create<GameState>((set, get) => ({
          if (skill.type === 'physical') base = Math.ceil(base / 3);
 
          t.hp = Math.max(0, t.hp - base);
-         logMsg = logMsg || `${actor.name} hits ${t.name} for ${base}.`;
+         logMsg = logMsg || `${actor.name} hits ${t.name} for ${base} (${t.hp} HP remain).`;
          
          if(skill.status && Math.random() < (skill.chance || 1.0)) {
             t.status.push({ type: skill.status, duration: skill.duration || 5 });
@@ -496,22 +456,40 @@ export const useGameStore = create<GameState>((set, get) => ({
       if(e.every(x => x.hp <= 0)) {
          const xpTotal = e.reduce((sum, en) => sum + en.xpReward, 0);
          const share = Math.floor(xpTotal / p.length);
-         let levelUpMsg = "";
+         const levelUpLogs: string[] = [];
+
          p.forEach(c => {
+            const oldLvl = c.level; 
             c.xp += share;
+            const newSkillsLearned: string[] = [];
+
             while(c.xp >= c.maxXp) {
-               c.xp -= c.maxXp; c.level++; c.maxXp = Math.floor(c.maxXp * 1.5);
+               c.xp -= c.maxXp; 
+               c.level++; 
+               c.maxXp = Math.floor(c.maxXp * 1.5);
                c.maxHp += 5; c.hp = c.maxHp;
+               
                const cls = classesData.find(cl => cl.id === c.classId);
                const newSkillsStr = cls?.unlocks ? cls.unlocks[c.level.toString()] : null;
+               
                if(newSkillsStr) {
                    const newSkills = newSkillsStr.split(',').map(s => s.trim());
-                   newSkills.forEach(k => { if(!c.unlockedSkills.includes(k)) c.unlockedSkills.push(k); });
-                   levelUpMsg = ` | ${c.name} reached Lv ${c.level}! Unlocked: ${newSkills.join(', ')}`;
-               } else { levelUpMsg = ` | ${c.name} reached Lv ${c.level}!`; }
+                   newSkills.forEach(k => { 
+                       if(!c.unlockedSkills.includes(k)) {
+                           c.unlockedSkills.push(k); 
+                           const realSkill = allSkills.find(s => s.id === k);
+                           newSkillsLearned.push(realSkill?.name || k);
+                       }
+                   });
+               }
+            }
+            if (c.level > oldLvl) {
+                let msg = `|L| ${c.name} reached Lv ${c.level}!`;
+                if (newSkillsLearned.length > 0) msg += ` Learned: ${newSkillsLearned.join(', ')}`;
+                levelUpLogs.push(msg);
             }
          });
-         return { activeEnemies: e, party: p, inventory: inv, isCombat: false, battleQueue: [], log: [...s.log, logMsg, `VICTORY! +${xpTotal} XP${levelUpMsg}`] };
+         return { activeEnemies: e, party: p, inventory: inv, isCombat: false, battleQueue: [], log: [...s.log, logMsg, `VICTORY! +${xpTotal} XP`, ...levelUpLogs] };
       }
       return { activeEnemies: e, party: p, inventory: inv, battleQueue: newQueue, log: [...s.log, logMsg] };
     });

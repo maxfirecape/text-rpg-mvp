@@ -73,7 +73,7 @@ function App() {
         <div style={{ display: 'flex', gap: '5px', marginTop:'2px' }}>
           {enemy.state === 'charging' && <span style={{ color:'yellow', fontSize:'0.7rem' }}>⚠ CHARGING</span>}
           {enemy.status.map((s, i) => (
-            <span key={i} style={{ fontSize: '0.7rem', color: 'orange' }}>[{s.type}]</span>
+            <span key={i} style={{ fontSize: '0.7rem', color: 'orange' }}>[{s.type}: {Math.ceil(s.duration)}s]</span>
           ))}
         </div>
       </div>
@@ -211,6 +211,11 @@ function App() {
                         </div>
                     </div>
                 )}
+                
+                {/* STATUS EFFECTS */}
+                {char.status.length > 0 && <div style={{fontSize:'0.7rem', color:'orange', marginTop:'2px'}}>
+                    {char.status.map(s => `${s.type} (${Math.ceil(s.duration)}s)`).join(', ')}
+                </div>}
               </div>
             ))}
         </div>
@@ -241,10 +246,29 @@ function App() {
             )}
         </div>
 
+        {/* LOG AREA UPDATED FOR TAGGED COLORS */}
         <div className="log-area">
-            {log.map((l, i) => (
-            <div key={i} style={{ marginBottom:'4px', paddingLeft:'8px', borderLeft:'2px solid cyan', fontSize:'0.95em', lineHeight:'1.4em' }}>{l}</div>
-            ))}
+            {log.map((l, i) => {
+                let color = '#ccc';
+                let text = l;
+                let weight = 'normal';
+
+                // Detect Tags
+                if (l.startsWith('|E|')) {
+                    color = '#ffe066'; // Yellow for Enemy
+                    text = l.replace('|E| ', '');
+                } else if (l.startsWith('|L|')) {
+                    color = '#00ffcc'; // Cyan for Level Up
+                    text = l.replace('|L| ', '');
+                    weight = 'bold';
+                }
+
+                return (
+                    <div key={i} style={{ marginBottom:'4px', paddingLeft:'8px', borderLeft:'2px solid cyan', fontSize:'0.95em', lineHeight:'1.4em', color, fontWeight: weight }}>
+                        {text}
+                    </div>
+                );
+            })}
             <div ref={logEndRef} />
         </div>
 
