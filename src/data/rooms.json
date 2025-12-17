@@ -1,11 +1,11 @@
 [
   {
     "id": "room_01_cell",
-    "name": "Dingy Cell Block",
+    "name": "Nocturn Castle Gate",
     "description": "Three heroes are locked in a cell with cobblestone floors and dimly lit torch lights.",
-    "image": "https://placehold.co/600x400/1a1a2e/FFF?text=Cell+Block",
+    "image": "https://placehold.co/600x400/1a1a2e/FFF?text=Nocturn+Gate",
     "exits": {
-      "west": "room_02_corridor"
+      "north": "room_02_corridor"
     },
     "interactables": {
       "door": { 
@@ -13,23 +13,23 @@
           "locked": true, 
           "message": "It's the cell door. It looks sturdy.",
           "onOpen": "ambush",
-          "ambushEnemyId": "guard_01"
+          "ambushEnemyId": "warden_01"
       },
       "bed": { 
           "type": "rest", 
           "message": "A stiff cot.", 
           "onOpen": "heal" 
       },
-      "warden_tutorial": { 
+      "battlewarden": { 
           "type": "event", 
-          "name": "Warden Tutorial",
-          "message": "Simulating Warden Battle...", 
+          "name": "Battle Warden",
+          "message": "Simulating Head Guard Battle...", 
           "onOpen": "battle",
           "ambushEnemyId": "warden_01"
       },
-      "harpie_battle": { 
+      "battle harpie": { 
           "type": "event", 
-          "name": "Harpie Battle",
+          "name": "Battle Harpie",
           "message": "Simulating Harpie Battle...", 
           "onOpen": "battle",
           "ambushEnemyId": "harpie_01"
@@ -45,7 +45,7 @@
     "description": "You step over the bodies of the guards and into the prison block hallway.",
     "image": "https://placehold.co/600x400/2e1a1a/FFF?text=Prison+Corridor",
     "exits": {
-      "east": "room_01_cell"
+      "south": "room_01_cell"
     },
     "interactables": {
       "chest": { 

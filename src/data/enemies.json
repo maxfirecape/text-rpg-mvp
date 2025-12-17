@@ -25,14 +25,14 @@
   },
   {
     "id": "warden_01",
-    "name": "Warden",
+    "name": "Head Guard",
     "hp": 100,
     "maxHp": 100,
     "stats": { "str": 10, "dex": 15 },
     "xpReward": 90,
     "loot": ["hp_potion", "hp_potion", "skill_potion", "skill_potion"],
-    "description": "The head honcho of guards at Myrilan Prison",
-    "messages": { "death": "The Warden has fallen!" },
+    "description": "The head honcho of guards.",
+    "messages": { "death": "The Head Guard has fallen!" },
     "status": [],
     "moves": [
       {
@@ -41,8 +41,8 @@
         "chance": 65,
         "chargeTime": 0.5,
         "staggerChance": 0.5,
-        "msgPrep": "Warden readies his weapon!",
-        "msgHit": "Warden attacks!",
+        "msgPrep": "Head Guard readies his weapon!",
+        "msgHit": "Head Guard attacks!",
         "damage": "7-14"
       },
       {
@@ -51,8 +51,8 @@
         "chance": 10,
         "chargeTime": 0.5,
         "staggerChance": 0.5,
-        "msgPrep": "Warden yells a battle cry!",
-        "msgHit": "Warden attacks!",
+        "msgPrep": "Head Guard yells a battle cry!",
+        "msgHit": "Head Guard attacks!",
         "damage": "7-14",
         "val": 1.5
       },
@@ -62,8 +62,8 @@
         "chance": 10,
         "chargeTime": 0.5,
         "staggerChance": 0.0,
-        "msgPrep": "Warden reaches for his radio...",
-        "msgHit": "Warden called for reinforcements!",
+        "msgPrep": "Head Guard reaches for his radio...",
+        "msgHit": "Head Guard called for reinforcements!",
         "summonId": "guard_01"
       },
       {
@@ -72,8 +72,8 @@
         "chance": 15,
         "chargeTime": 0.5,
         "staggerChance": 0.5,
-        "msgPrep": "Warden reaches for a potion...",
-        "msgHit": "Warden drank a potion!",
+        "msgPrep": "Head Guard reaches for a potion...",
+        "msgHit": "Head Guard drank a potion!",
         "val": 2.0
       }
     ]

@@ -1,60 +1,125 @@
 [
   {
-    "id": "rogue",
-    "name": "Rogue",
-    "stats": { "str": 10, "con": 8, "dex": 20, "wis": 10, "hitChance": 85, "skillSlots": 4 },
-    "startingEquipment": ["dual_knives", "clothes", "gloves", "boots", "lucky_charm"],
-    "startingItems": ["hp_potion", "hp_potion", "hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick"],
-    "startingCredits": 200,
-    "startingSkills": ["steal", "precision_strike", "ghost_step"],
-    "unlocks": {
-      "2": "skeleton_key",
-      "3": "double_strike",
-      "5": "poison_blade",
-      "7": "auto_counter",
-      "9": "disable",
-      "11": "critical_strike",
-      "12": "phantom_step",
-      "15": "trick_coin",
-      "18": "multi_ghost_step"
-    }
+    "id": "guard_01",
+    "name": "Prison Guard",
+    "hp": 30,
+    "maxHp": 30,
+    "stats": { "str": 10, "dex": 15 },
+    "xpReward": 40,
+    "loot": ["lucky_charm"],
+    "description": "A prison guard armed with a baton",
+    "messages": { "death": "The Guard has fallen!" },
+    "status": [],
+    "moves": [
+      {
+        "name": "Strike",
+        "type": "attack",
+        "chance": 100,
+        "chargeTime": 1.0,
+        "staggerChance": 1.0,
+        "msgPrep": "The Guard raises his baton!",
+        "msgHit": "The Guard strikes!",
+        "damage": "5-12"
+      }
+    ]
   },
   {
-    "id": "fighter",
-    "name": "Fighter",
-    "stats": { "str": 14, "con": 14, "dex": 5, "wis": 10, "hitChance": 85, "skillSlots": 5 },
-    "startingEquipment": ["longsword", "clothes", "gloves", "boots", "lucky_charm"],
-    "startingItems": ["hp_potion", "hp_potion", "hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion"],
-    "startingCredits": 100,
-    "startingSkills": ["heavy_strike", "brutal_strike", "berzerk"],
-    "unlocks": {
-      "2": "evade_up, armor_up",
-      "3": "super_evade_up, super_armor_up"
-    }
+    "id": "warden_01",
+    "name": "Head Guard",
+    "hp": 100,
+    "maxHp": 100,
+    "stats": { "str": 10, "dex": 15 },
+    "xpReward": 90,
+    "loot": ["hp_potion", "hp_potion", "skill_potion", "skill_potion"],
+    "description": "The head honcho of guards.",
+    "messages": { "death": "The Head Guard has fallen!" },
+    "status": [],
+    "moves": [
+      {
+        "name": "Regular Attack",
+        "type": "attack",
+        "chance": 65,
+        "chargeTime": 0.5,
+        "staggerChance": 0.5,
+        "msgPrep": "Head Guard readies his weapon!",
+        "msgHit": "Head Guard attacks!",
+        "damage": "7-14"
+      },
+      {
+        "name": "Heavy Attack",
+        "type": "heavy_attack",
+        "chance": 10,
+        "chargeTime": 0.5,
+        "staggerChance": 0.5,
+        "msgPrep": "Head Guard yells a battle cry!",
+        "msgHit": "Head Guard attacks!",
+        "damage": "7-14",
+        "val": 1.5
+      },
+      {
+        "name": "Reinforcements",
+        "type": "summon",
+        "chance": 10,
+        "chargeTime": 0.5,
+        "staggerChance": 0.0,
+        "msgPrep": "Head Guard reaches for his radio...",
+        "msgHit": "Head Guard called for reinforcements!",
+        "summonId": "guard_01"
+      },
+      {
+        "name": "Heal",
+        "type": "heal",
+        "chance": 15,
+        "chargeTime": 0.5,
+        "staggerChance": 0.5,
+        "msgPrep": "Head Guard reaches for a potion...",
+        "msgHit": "Head Guard drank a potion!",
+        "val": 2.0
+      }
+    ]
   },
   {
-    "id": "wizard",
-    "name": "Wizard",
-    "stats": { "str": 6, "con": 10, "dex": 5, "wis": 14, "hitChance": 80, "skillSlots": 7 },
-    "startingEquipment": ["staff", "clothes", "gloves", "boots", "lucky_charm"],
-    "startingItems": ["hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion"],
-    "startingCredits": 100,
-    "startingSkills": ["fire", "freeze", "shock"],
-    "unlocks": {
-      "2": "flame_wall, shock_wall"
-    }
-  },
-  {
-    "id": "cleric",
-    "name": "Cleric",
-    "stats": { "str": 12, "con": 25, "dex": 5, "wis": 14, "hitChance": 80, "skillSlots": 7 },
-    "startingEquipment": ["staff", "clothes", "gloves", "boots", "lucky_charm"],
-    "startingItems": ["hp_potion", "hp_potion", "hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "phoenix_potion", "phoenix_potion", "tent"],
-    "startingCredits": 100,
-    "startingSkills": ["heal", "healing_rain", "revive"],
-    "unlocks": {
-      "2": "greater_revive, max_revive",
-      "3": "greater_heal, group_rain"
-    }
+    "id": "harpie_01",
+    "name": "Harpie",
+    "hp": 20,
+    "maxHp": 20,
+    "stats": { "str": 5, "dex": 20 },
+    "xpReward": 90,
+    "loot": ["hp_potion", "hp_potion", "skill_potion", "skill_potion"],
+    "description": "A beast with wings for arms and a sharp beak.",
+    "messages": { "death": "Harpie falls!" },
+    "status": [],
+    "moves": [
+      {
+        "name": "Regular Attack",
+        "type": "attack",
+        "chance": 65,
+        "chargeTime": 0.5,
+        "staggerChance": 0.5,
+        "msgPrep": "Harpie brandishes its fangs!",
+        "msgHit": "Harpie attacks!",
+        "damage": "8-12"
+      },
+      {
+        "name": "Scratch",
+        "type": "aoe_attack",
+        "chance": 30,
+        "chargeTime": 0.25,
+        "staggerChance": 0.0,
+        "msgPrep": "Harpie brandishes its claws!",
+        "msgHit": "Harpie attacks! Everyone grits their teeth.",
+        "damage": "3"
+      },
+      {
+        "name": "Reinforcements",
+        "type": "summon",
+        "chance": 5,
+        "chargeTime": 0.5,
+        "staggerChance": 0.0,
+        "msgPrep": "Harpie screeches loudly...",
+        "msgHit": "Harpie called for reinforcements!",
+        "summonId": "harpie_01"
+      }
+    ]
   }
 ]

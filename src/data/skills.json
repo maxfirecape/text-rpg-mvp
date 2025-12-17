@@ -26,8 +26,8 @@
   { "id": "flame_wall", "name": "Flame Wall", "cost": 2, "type": "magic", "target": "all_enemies", "formula": "1d10 * [LVL]", "status": "burn", "chance": 0.4, "duration": 30, "description": "1d10/Lvl (AoE). 40% Burn.", "aliases": ["fw", "wall"], "classes": ["wizard"] },
   { "id": "shock_wall", "name": "Shock Wall", "cost": 2, "type": "magic", "target": "all_enemies", "formula": "2d6 * [LVL]", "status": "stun", "chance": 0.6, "duration": 5, "description": "2d6/Lvl (AoE). 60% Stun.", "aliases": ["sw", "shockwall"], "classes": ["wizard"] },
 
-  { "id": "heal", "name": "Heal", "cost": 1, "type": "heal", "formula": "[WIS]", "description": "Heals [WIS].", "aliases": ["h", "cure"], "classes": ["cleric"] },
-  { "id": "healing_rain", "name": "Healing Rain", "cost": 1, "type": "heal", "target": "party", "formula": "[WIS]*0.5", "duration": 10, "description": "Party Regen [WIS]/2 (10s).", "aliases": ["hr", "rain"], "classes": ["cleric"] },
+  { "id": "heal", "name": "Heal", "cost": 1, "type": "heal", "formula": "[WIS] * 1.5", "description": "Heals [WIS] * 1.5.", "aliases": ["h", "cure"], "classes": ["cleric"] },
+  { "id": "healing_rain", "name": "Healing Rain", "cost": 1, "type": "heal", "target": "party", "formula": "[WIS]*0.5", "duration": 6, "description": "Party Regen [WIS]/2 (6s).", "aliases": ["hr", "rain"], "classes": ["cleric"] },
   { "id": "revive", "name": "Revive", "cost": 1, "type": "revive", "formula": "[WIS]", "description": "Revives with [WIS] HP.", "aliases": ["res", "life"], "classes": ["cleric"] },
   { "id": "greater_revive", "name": "Greater Revive", "cost": 2, "type": "revive", "formula": "50% + 2d4", "description": "Revives with 50% HP + 2d4.", "aliases": ["gr", "grevive"], "classes": ["cleric"] },
   { "id": "max_revive", "name": "Max Revive", "cost": 3, "type": "revive", "formula": "100%", "description": "Revives with 100% HP.", "aliases": ["mr", "maxlife"], "classes": ["cleric"] },

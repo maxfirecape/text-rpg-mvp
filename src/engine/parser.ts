@@ -13,7 +13,7 @@ const skillsData = skillsDataJson as unknown as Skill[];
 const classesData = classesDataJson as unknown as Class[];
 const enemiesData = enemiesDataJson as unknown as Enemy[];
 
-// --- HELPERS ---
+// ... (Helpers: getRoom, findItem, findSkill, resolveEnemyIndex, resolvePartyIndex, handleDialogue - SAME AS BEFORE)
 const getRoom = (id: string): Room | undefined => roomsData.find(r => r.id === id);
 const findItem = (q: string): Item | undefined => itemsData.find(i => i.id === q || i.name.toLowerCase() === q || i.aliases?.includes(q));
 const findSkill = (q: string): Skill | undefined => skillsData.find(s => s.id === q || s.name.toLowerCase() === q || s.aliases?.includes(q));
@@ -21,25 +21,17 @@ const findSkill = (q: string): Skill | undefined => skillsData.find(s => s.id ==
 const resolveEnemyIndex = (q: string, enemies: Enemy[]) => {
   if (!q) return enemies.findIndex(e => e.hp > 0);
   const l = q.toLowerCase();
-  
   if (l === 'a' || l === '1') return 0; 
   if (l === 'b' || l === '2') return 1; 
   if (l === 'c' || l === '3') return 2;
-  
   return enemies.findIndex(e => e.name.toLowerCase().includes(l));
 };
 
 const resolvePartyIndex = (q: string, party: Character[]) => {
   if (!q) return -1;
   const l = q.toLowerCase();
-  
-  if (l === '1') return 0;
-  if (l === '2') return 1;
-  if (l === '3') return 2;
-  if (l === 'hero 1') return 0; 
-  if (l === 'hero 2') return 1; 
-  if (l === 'hero 3') return 2;
-
+  if (l === '1') return 0; if (l === '2') return 1; if (l === '3') return 2;
+  if (l === 'hero 1') return 0; if (l === 'hero 2') return 1; if (l === 'hero 3') return 2;
   return party.findIndex(c => c.name.toLowerCase().includes(l));
 };
 
@@ -59,8 +51,7 @@ const handleDialogue = (input: string, currentState: GameState) => {
   return false;
 };
 
-// --- COMMAND HANDLERS ---
-
+// ... (cmdLook, cmdExamine, cmdInventory, cmdStats, cmdEquipment, cmdSkills, cmdUnequip - SAME AS BEFORE)
 const cmdLook = (args: string, currentState: GameState) => {
   const room = getRoom(currentState.currentRoomId);
   if (!room) return;
@@ -86,23 +77,11 @@ const cmdExamine = (args: string, currentState: GameState) => {
     if (key) {
       const obj = room.interactables[key];
       
-      // --- EVENT TRIGGERS ---
       if (obj.onOpen === 'battle' && obj.ambushEnemyId) {
           store.getState().addLog(obj.message);
           const g = enemiesData.find(e => e.id === obj.ambushEnemyId);
           if (g) {
-              const enemies = [{ 
-                  ...g, 
-                  id: `e${Date.now()}`, 
-                  name: g.name, 
-                  hp: g.hp, 
-                  maxHp: g.maxHp, 
-                  status: [], 
-                  moves: g.moves,
-                  state: 'idle',
-                  atbTimer: 3,
-                  phases: []
-              } as Enemy];
+              const enemies = [{ ...g, id: `e${Date.now()}`, name: g.name, hp: g.hp, maxHp: g.maxHp, status: [], moves: g.moves } as Enemy];
               store.getState().startCombat(enemies);
           }
           return;
@@ -114,7 +93,6 @@ const cmdExamine = (args: string, currentState: GameState) => {
           store.getState().fullRestore();
           return;
       }
-      // ----------------------
 
       if (key === "prisoner" || key === "rex") {
         store.getState().setDialogue("rex_intro");
@@ -142,31 +120,34 @@ const cmdExamine = (args: string, currentState: GameState) => {
   store.getState().addLog(`You don't see '${args}' here.`);
 };
 
+// --- UPDATED CMD MOVE TO HANDLE NORTH AMBUSH ---
 const cmdMove = (dir: string, currentState: GameState) => {
   const room = getRoom(currentState.currentRoomId);
   const directionMap: { [key: string]: string } = { n: 'north', s: 'south', e: 'east', w: 'west', u: 'up', d: 'down' };
   const d = directionMap[dir] || dir;
 
-  // --- AMBUSH LOGIC FOR CELL DOOR ---
-  if (currentState.currentRoomId === 'room_01_cell' && d === 'west') {
+  // Change from 'west' to 'north' logic
+  if (currentState.currentRoomId === 'room_01_cell' && d === 'north') {
       const doorId = 'room_01_cell_door';
       if (!currentState.lootedChests.includes(doorId)) {
           store.getState().addLog("You try to leave, but the door kicks open!");
-          const g = enemiesData.find(e => e.id === 'guard_01');
+          // Load Warden (Head Guard)
+          const g = enemiesData.find(e => e.id === 'warden_01'); 
           if (g) {
-              const enemies = ['A', 'B', 'C'].map((l, i) => ({ 
+              // Warden is a single boss, not a group
+              const enemies = [{ 
                   ...g, 
-                  id: `e${Date.now()}_${i}`, 
-                  name: `${g.name} ${l}`, 
+                  id: `e${Date.now()}`, 
+                  name: g.name, 
                   hp: g.hp, 
                   maxHp: g.maxHp, 
                   status: [], 
                   moves: g.moves || [],
                   loot: [...(g.loot||[])],
                   state: 'idle',
-                  atbTimer: Math.random() * 2 + 2,
+                  atbTimer: 3,
                   phases: []
-              } as Enemy));
+              } as Enemy];
               store.getState().startCombat(enemies);
               store.getState().setChestLooted(doorId); 
           }
@@ -182,6 +163,7 @@ const cmdMove = (dir: string, currentState: GameState) => {
     store.getState().addLog("You can't go that way.");
   }
 };
+// ---------------------------------------------
 
 const cmdInventory = () => {
   const { credits, inventory } = store.getState();
@@ -285,14 +267,12 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
   const potentialName = args.split(" ")[0];
   const namedIndex = resolvePartyIndex(potentialName, currentState.party);
   
-  // Ambiguity Check: Is the first word a Name or a Skill?
   const potentialSkill = findSkill(potentialName);
   const potentialItem = findItem(potentialName);
   const isAmbiguousAlias = !!potentialSkill || !!potentialItem;
 
   let intendedActorChange = false;
   if (namedIndex !== -1 && currentState.party[namedIndex].id !== currentActorId) {
-      // If matches name, ONLY treat as actor switch if it's NOT a skill.
       if (isAmbiguousAlias) {
           intendedActorChange = false; 
       } else {
@@ -306,7 +286,6 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
   }
 
   let cleanArgs = args;
-  // Only strip the name if it wasn't ambiguous
   if (namedIndex !== -1 && !isAmbiguousAlias) {
       cleanArgs = args.substring(potentialName.length).trim();
   }
@@ -321,29 +300,24 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
     let spellStr = cleanArgs;
     let targetStr = "";
 
-    // 1. Explicit "on"
     if (cleanArgs.includes(" on ")) {
       const parts = cleanArgs.split(" on ");
       spellStr = parts[0];
       targetStr = parts[1];
     } 
-    // 2. Explicit "from" (for Steal)
     else if (cleanArgs.includes(" from ")) {
       const parts = cleanArgs.split(" from ");
       spellStr = parts[0];
       targetStr = parts[1];
     }
-    // 3. Implicit "skill target"
     else {
       const parts = cleanArgs.split(" ");
       if (parts.length > 1) {
           const last = parts[parts.length - 1].toLowerCase();
-          // Check if last word is a valid target shortcut (1, 2, 3, a, b, c)
           if (/^[a-c1-3]$/.test(last) || last.startsWith('hero') || last.startsWith('guard')) {
               targetStr = parts.pop()!;
               spellStr = parts.join(" ");
           } else {
-              // Fallback: Check indexes
               if (resolveEnemyIndex(last, currentState.activeEnemies) !== -1 || resolvePartyIndex(last, currentState.party) !== -1) {
                   targetStr = parts.pop()!;
                   spellStr = parts.join(" ");
@@ -363,12 +337,10 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
 
     if (!actionId) { store.getState().addLog("Unknown skill or item."); return; }
 
-    // --- FIX: CHECK ITEM FRIENDLINESS TOO ---
     let isFriendly = false;
     if (skill) {
         isFriendly = ['heal', 'buff', 'revive', 'restore_mp'].includes(skill.type);
     } else if (actionId) {
-        // Check Item effects
         const it = findItem(actionId);
         if (it && it.effect) {
             isFriendly = it.effect.startsWith('heal_') || 
@@ -377,12 +349,9 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
                          it.effect.startsWith('buff_');
         }
     }
-    // ----------------------------------------
     
-    // If friendly, try resolving against party first
     if (isFriendly) {
         let tIdx = resolvePartyIndex(targetStr, currentState.party);
-        // Default to self if targetStr is empty or invalid
         if (tIdx === -1 && !targetStr) tIdx = actorIndex;
         
         if (tIdx !== -1) {
@@ -391,7 +360,6 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
         }
     }
 
-    // Default to enemy if not friendly OR if friendly target wasn't found in party
     const enemyTargetIdx = resolveEnemyIndex(targetStr || "", currentState.activeEnemies);
     store.getState().performAction(actorIndex, actionId, enemyTargetIdx, 'enemy');
   }
@@ -486,6 +454,22 @@ export const processCommand = (input: string) => {
   if (!clean) return;
   
   if (currentState.isGameOver) return; 
+
+  // --- NEW: HANDLE PENDING CHOICE ---
+  if (currentState.pendingChoice) {
+      if (currentState.pendingChoice.type === 'equip_replace') {
+          const choice = parseInt(clean);
+          if ([1, 2, 3].includes(choice)) {
+              const { charIdx, itemId } = currentState.pendingChoice.data;
+              store.getState().equipItem(charIdx, itemId, choice - 1); // 0-based index
+          } else {
+              store.getState().addLog("Invalid choice. Cancelled.");
+              store.getState().setPendingChoice(null);
+          }
+          return;
+      }
+  }
+  // ----------------------------------
 
   const parts = clean.split(" ");
   const command = parts[0].toLowerCase();

@@ -10,7 +10,6 @@ const allEnemies = enemiesData as unknown as Enemy[];
 const allSkills = skillsData as unknown as Skill[];
 const getItem = (id: string | null) => itemsData.find(i => i.id === id) as Item | undefined;
 
-// --- HELPER: ENEMY DAMAGE PARSER ---
 const getEnemyDamage = (damageStr?: string): number => {
     if (!damageStr) return 0;
     if (damageStr.includes('-')) {
@@ -19,7 +18,6 @@ const getEnemyDamage = (damageStr?: string): number => {
     }
     return parseInt(damageStr) || 0;
 };
-// -----------------------------------
 
 const calcVal = (formula: string, stats: Stats, lvl: number = 1): number => {
   try {
@@ -42,6 +40,10 @@ export interface GameState {
   battleQueue: string[];
   isGameOver: boolean;
 
+  // --- PENDING CHOICE STATE ---
+  pendingChoice: { type: string; data: any } | null;
+  setPendingChoice: (c: { type: string; data: any } | null) => void;
+
   addLog: (m: string) => void;
   setRoom: (id: string) => void;
   setInputLock: (l: boolean) => void;
@@ -49,7 +51,7 @@ export interface GameState {
   setTempName: (n: string|null) => void;
   addCharacter: (c: Character, cr: number) => void;
   addToInventory: (id: string) => void;
-  equipItem: (idx: number, id: string) => void;
+  equipItem: (idx: number, id: string, replaceSlot?: number) => void;
   unequipItem: (idx: number, s: string, i?: number) => void;
   useItem: (itemId: string, targetIdx?: number) => void;
   setChestLooted: (id: string) => void;
@@ -65,26 +67,27 @@ export interface GameState {
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
-  party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell', log: ["Welcome to Inertia.", "Enter Name for Hero 1:"], 
+  party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell', log: ["Welcome to Neverending Night.", "Enter Name for Hero 1:"], 
   isCombat: false, activeEnemies: [], isInputLocked: false, activeDialogue: null, tempCharacterName: null,
-  lootedChests: [],
-  battleQueue: [],
-  isGameOver: false,
+  lootedChests: [], battleQueue: [], isGameOver: false,
+  pendingChoice: null,
 
   addLog: (m) => set(s => ({ log: [...s.log, m] })),
   setRoom: (id) => set({ currentRoomId: id }),
   setInputLock: (l) => set({ isInputLocked: l }),
   setDialogue: (id) => set({ activeDialogue: id }),
   setTempName: (n) => set({ tempCharacterName: n }),
+  setPendingChoice: (c) => set({ pendingChoice: c }),
+
   addCharacter: (c, cr) => set(s => ({ party: [...s.party, { ...c, atbTimer: 3.5 }], credits: s.credits + cr, tempCharacterName: null })),
   addToInventory: (id) => set(s => ({ inventory: [...s.inventory, id] })),
   setChestLooted: (id) => set(s => ({ lootedChests: [...s.lootedChests, id] })),
 
   resetGame: () => set({
     party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell', 
-    log: ["Welcome to Inertia.", "Enter Name for Hero 1:"],
+    log: ["Welcome to Neverending Night.", "Enter Name for Hero 1:"],
     isCombat: false, activeEnemies: [], isInputLocked: false, activeDialogue: null, 
-    tempCharacterName: null, lootedChests: [], battleQueue: [], isGameOver: false
+    tempCharacterName: null, lootedChests: [], battleQueue: [], isGameOver: false, pendingChoice: null
   }),
 
   fullRestore: () => set(s => {
@@ -111,7 +114,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const data = JSON.parse(raw);
     set({
       party: data.party, inventory: data.inventory, credits: data.credits, currentRoomId: data.currentRoomId,
-      lootedChests: data.lootedChests || [], log: ["Game Loaded."], isCombat: false, activeEnemies: [], battleQueue: [], isGameOver: false
+      lootedChests: data.lootedChests || [], log: ["Game Loaded."], isCombat: false, activeEnemies: [], battleQueue: [], isGameOver: false, pendingChoice: null
     });
     return true;
   },
@@ -132,19 +135,68 @@ export const useGameStore = create<GameState>((set, get) => ({
     return s;
   },
 
-  equipItem: (idx, id) => set(s => { const p = [...s.party]; const c = p[idx]; const item = getItem(id); if(!item || !s.inventory.includes(id)) return {}; const inv = [...s.inventory]; inv.splice(inv.indexOf(id), 1); if(item.type === 'weapon') { if(c.equipment.weapon) inv.push(c.equipment.weapon); c.equipment.weapon = id; } else if(item.type === 'armor') { if(c.equipment.armor) inv.push(c.equipment.armor); c.equipment.armor = id; } else if(item.type === 'accessory') { if(c.equipment.accessories.length >= 3) inv.push(c.equipment.accessories.shift()!); c.equipment.accessories.push(id); } return { party: p, inventory: inv, log: [...s.log, `${c.name} equipped ${item.name}.`] }; }),
+  equipItem: (idx, id, replaceSlot) => set(s => {
+    const p = [...s.party]; const c = p[idx]; const item = getItem(id);
+    if(!item || !s.inventory.includes(id)) return {};
+    
+    if (item.type === 'accessory' && c.equipment.accessories.length >= 3 && replaceSlot === undefined) {
+        return { 
+            pendingChoice: { type: 'equip_replace', data: { charIdx: idx, itemId: id } }, 
+            log: [...s.log, "Accessory slots full. Replace which one? (1, 2, 3)"] 
+        };
+    }
+
+    const inv = [...s.inventory]; 
+    
+    if(item.type === 'weapon') { 
+        if(c.equipment.weapon) inv.push(c.equipment.weapon); 
+        inv.splice(inv.indexOf(id), 1);
+        c.equipment.weapon = id; 
+    }
+    else if(item.type === 'armor') { 
+        if(c.equipment.armor) inv.push(c.equipment.armor); 
+        inv.splice(inv.indexOf(id), 1);
+        c.equipment.armor = id; 
+    }
+    else if(item.type === 'accessory') {
+        inv.splice(inv.indexOf(id), 1); 
+
+        if (c.equipment.accessories.length >= 3 && replaceSlot !== undefined) {
+            const oldItem = c.equipment.accessories[replaceSlot];
+            c.equipment.accessories[replaceSlot] = id;
+            inv.push(oldItem); 
+        } else {
+            c.equipment.accessories.push(id);
+        }
+    }
+    return { party: p, inventory: inv, log: [...s.log, `${c.name} equipped ${item.name}.`], pendingChoice: null };
+  }),
+
   unequipItem: (idx, slot, i=0) => set(s => { const p = [...s.party]; const c = p[idx]; const inv = [...s.inventory]; let r: string|null = null; if(slot==='weapon') { r=c.equipment.weapon; c.equipment.weapon=null; } else if(slot==='armor') { r=c.equipment.armor; c.equipment.armor=null; } else if(slot==='accessory') r=c.equipment.accessories.splice(i,1)[0]; if(r) inv.push(r); return { party: p, inventory: inv }; }),
+  
   useItem: (itemId, targetIdx = 0) => set(s => {
       const inv = [...s.inventory];
       const idx = inv.indexOf(itemId);
       if (idx === -1) return { log: [...s.log, "You don't have that."] };
+
       const item = getItem(itemId);
       if (!item || item.type !== 'consumable') return { log: [...s.log, "You can't use that."] };
+
       const p = [...s.party];
       const target = p[targetIdx];
+      
       let msg = `Used ${item.name}.`;
-      if (item.effect?.startsWith('heal_')) { const val = calcVal(item.effect.replace('heal_', ''), target.stats, target.level); target.hp = Math.min(target.maxHp, target.hp + val); msg = `Healed ${target.name} for ${val} HP.`; }
-      else if (item.effect === 'restore_skill') { target.mp = Math.min(target.maxMp, target.mp + 2); msg = `Restored SP to ${target.name}.`; }
+      
+      if (item.effect?.startsWith('heal_')) {
+          const formula = item.effect.replace('heal_', '');
+          const val = calcVal(formula, target.stats, target.level);
+          target.hp = Math.min(target.maxHp, target.hp + val);
+          msg = `Healed ${target.name} for ${val} HP.`;
+      } else if (item.effect === 'restore_skill') {
+          target.mp = Math.min(target.maxMp, target.mp + 2);
+          msg = `Restored SP to ${target.name}.`;
+      }
+
       inv.splice(idx, 1);
       return { party: p, inventory: inv, log: [...s.log, msg] };
   }),
@@ -260,18 +312,14 @@ export const useGameStore = create<GameState>((set, get) => ({
                    const mult = currentMove?.val || 1.0;
                    const bzk = processedE.status.find((s:any) => s.type === 'berzerk')?.val || 1.0;
                    
-                   // --- NEW DAMAGE CALC ---
                    let baseDmg = 0;
-                   // Use specific range if defined, otherwise fallback to stats
                    if (currentMove?.damage) {
                        baseDmg = getEnemyDamage(currentMove.damage);
                    } else {
                        baseDmg = Math.floor(Math.random()*4+1 + Math.floor(processedE.stats.str/2));
                    }
                    
-                   // Apply Multipliers
                    baseDmg = Math.floor(baseDmg * mult * bzk);
-                   // -----------------------
                    
                    let reduct = 0;
                    const arm = getItem(target.equipment.armor);
@@ -406,6 +454,9 @@ export const useGameStore = create<GameState>((set, get) => ({
                     if(t.hp <= 0) t.hp = amt; else t.hp = Math.min(t.maxHp, t.hp + amt);
                  } else {
                     amt = calcVal(skill.formula || "[WIS]", actorStats, actor.level);
+                    if (skill.id === 'heal') {
+                        amt = Math.floor(actorStats.wis * 1.5);
+                    }
                     t.hp = Math.min(t.maxHp, t.hp + amt);
                  }
              }
