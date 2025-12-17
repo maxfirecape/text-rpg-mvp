@@ -86,6 +86,10 @@ function App() {
   };
 
   const renderContextPanel = () => {
+    // --- FIX: HIDE ACTIONS DURING CREATION ---
+    if (party.length < 3) return null;
+    // ----------------------------------------
+
     if (isCombat) {
       const activeCharId = battleQueue[0];
       const activeChar = party.find(p => p.id === activeCharId);
@@ -183,12 +187,15 @@ function App() {
       )}
 
       <div className="sidebar">
-        <div className="panel-section tech-border" style={{ flex: 1, overflowY: 'auto', minHeight: '0' }}>
+        {/* --- FIX: PARTY SECTION (Auto Height) --- */}
+        <div className="panel-section tech-border" style={{ flex: '0 0 auto', maxHeight:'60%', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom:'5px' }}>
                <span style={{ color: 'var(--sys-cyan)', fontWeight:'bold' }}>PARTY</span>
                <span style={{ color:'#ffd700' }}>${credits}</span>
             </div>
             
+            {party.length === 0 && <div style={{color:'#666', fontStyle:'italic', fontSize:'0.8em'}}>No heroes registered.</div>}
+
             {party.map((char, index) => (
               <div key={char.id} style={{ marginBottom: '6px', padding: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
                 <div style={{ fontWeight: 'bold', fontSize:'0.9em', display:'flex', justifyContent:'space-between' }}>
@@ -224,9 +231,13 @@ function App() {
             ))}
         </div>
 
-        <div className="panel-section tech-border" style={{ height: '30%' }}>
-            {renderContextPanel()}
-        </div>
+        {/* --- FIX: CONTEXT SECTION (Fills Remaining Space) --- */}
+        {/* Only show if party is full (or at least 3) */}
+        {party.length >= 3 && (
+            <div className="panel-section tech-border" style={{ flex: 1, minHeight: 0, marginTop: '10px' }}>
+                {renderContextPanel()}
+            </div>
+        )}
       </div>
 
       <div className="main-content">

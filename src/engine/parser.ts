@@ -247,6 +247,7 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
   }
   let cleanArgs = args;
   if (namedIndex !== -1 && !isAmbiguousAlias) cleanArgs = args.substring(potentialName.length).trim();
+  
   if (['attack', 'a', 'kill', 'hit'].includes(command)) {
     const tIdx = resolveEnemyIndex(cleanArgs, currentState.activeEnemies);
     store.getState().performAction(actorIndex, 'attack', tIdx, 'enemy');
@@ -386,9 +387,18 @@ export const processCommand = (input: string) => {
       store.getState().addLog(`Welcome ${clean}. Choose Class: [rogue (r)], [fighter (f)], [wizard (w)], [cleric (c)], or press 'help' for general help or 'help [class]' for class help.`);
     } else {
       if (command === 'help' || command === 'h') { cmdHelp(args, currentState); return; }
+      
       const aliasMap: {[key: string]: string} = { 'f': 'fighter', 'r': 'rogue', 'w': 'wizard', 'c': 'cleric' };
       const resolvedClass = aliasMap[command] || command;
-      const cls = classesData.find(c => c.id === resolvedClass || c.name.toLowerCase() === resolvedClass);
+      
+      // --- BULLETPROOF CLASS MATCHING ---
+      let cls = classesData.find(c => c.id === resolvedClass || c.name.toLowerCase() === resolvedClass);
+      
+      // Fallback: check if id starts with input (e.g. "fight" matches "fighter")
+      if (!cls) {
+          cls = classesData.find(c => c.id.startsWith(command));
+      }
+      
       if (cls) {
         // @ts-ignore
         const startingSkills = cls.startingSkills || [];
@@ -403,13 +413,21 @@ export const processCommand = (input: string) => {
         store.getState().addCharacter(newHero, cls.startingCredits);
         cls.startingItems.forEach(id => store.getState().addToInventory(id));
         store.getState().addLog(`Registered ${newHero.name} the ${cls.name}.`);
+        
+        // --- CRITICAL FIX: RESET TEMP NAME ---
         store.getState().setTempName(null);
+        // -------------------------------------
+
         if (store.getState().party.length < 3) store.getState().addLog(`Enter Name for Hero ${store.getState().party.length + 1}:`);
         else {
           store.getState().addLog("INITIALIZATION COMPLETE.");
           setTimeout(() => { const r = getRoom(store.getState().currentRoomId); if(r) store.getState().addLog(r.description); }, 1000);
         }
-      } else store.getState().addLog("Invalid Class. Choose: [rogue (r)], [fighter (f)], [wizard (w)], [cleric (c)]");
+      } else {
+          // Debugging assistance for you (visible in game log)
+          const avail = classesData.map(c => c.id).join(", ");
+          store.getState().addLog(`Invalid Class '${command}'. Available: ${avail}`);
+      }
     }
     return;
   }
