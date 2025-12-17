@@ -40,10 +40,11 @@ export interface GameState {
   battleQueue: string[];
   isGameOver: boolean;
 
-  // --- PENDING CHOICE STATE ---
+  // --- SYSTEM STATE ---
   pendingChoice: { type: string; data: any } | null;
+  introTimers: number[]; // Store timer IDs to cancel them
+  
   setPendingChoice: (c: { type: string; data: any } | null) => void;
-
   addLog: (m: string) => void;
   setRoom: (id: string) => void;
   setInputLock: (l: boolean) => void;
@@ -55,7 +56,11 @@ export interface GameState {
   unequipItem: (idx: number, s: string, i?: number) => void;
   useItem: (itemId: string, targetIdx?: number) => void;
   setChestLooted: (id: string) => void;
+  
   resetGame: () => void;
+  runIntro: () => void;
+  clearIntro: () => void; // Stops the text sequence
+  
   saveGame: () => void; 
   loadGame: () => boolean; 
   getDerivedStats: (c: Character) => Stats;
@@ -67,10 +72,14 @@ export interface GameState {
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
-  party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell', log: ["Welcome to Neverending Night.", "Enter Name for Hero 1:"], 
-  isCombat: false, activeEnemies: [], isInputLocked: false, activeDialogue: null, tempCharacterName: null,
+  party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell', 
+  log: [], // Start empty for intro
+  isCombat: false, activeEnemies: [], 
+  isInputLocked: true, // Start locked
+  activeDialogue: null, tempCharacterName: null,
   lootedChests: [], battleQueue: [], isGameOver: false,
   pendingChoice: null,
+  introTimers: [],
 
   addLog: (m) => set(s => ({ log: [...s.log, m] })),
   setRoom: (id) => set({ currentRoomId: id }),
@@ -83,41 +92,81 @@ export const useGameStore = create<GameState>((set, get) => ({
   addToInventory: (id) => set(s => ({ inventory: [...s.inventory, id] })),
   setChestLooted: (id) => set(s => ({ lootedChests: [...s.lootedChests, id] })),
 
-  resetGame: () => set({
-    party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell', 
-    log: ["Welcome to Neverending Night.", "Enter Name for Hero 1:"],
-    isCombat: false, activeEnemies: [], isInputLocked: false, activeDialogue: null, 
-    tempCharacterName: null, lootedChests: [], battleQueue: [], isGameOver: false, pendingChoice: null
-  }),
+  // --- INTRO & SYSTEM COMMANDS ---
+  clearIntro: () => {
+      const s = get();
+      s.introTimers.forEach(t => clearTimeout(t));
+      set({ introTimers: [], isInputLocked: false });
+  },
+
+  runIntro: () => {
+      get().clearIntro(); // Clear existing timers first
+      set({ log: [], isInputLocked: true, party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell' });
+      
+      const { addLog } = get();
+      const timers: number[] = [];
+
+      // Helper to schedule text
+      const schedule = (ms: number, text: string, unlock = false) => {
+          const t = setTimeout(() => {
+              addLog(text);
+              if (unlock) set({ isInputLocked: false });
+          }, ms);
+          timers.push(Number(t));
+      };
+
+      addLog("In the dead of midnight, below the radiant crescent shaped moon, stood a crooked looking castle, tall and wide, at the edge of a mountain valley, nestled at the edge of a forest. A path extends out from the castle into the forest and out into a clearing with a small port town. At the end of this eerie path, heading from the village towards the castle, were three shadows on a mission - to rescue the port town chapel's head priest - Father Lin.");
+
+      schedule(10000, "His kidnapping was swift, and happened a mere five hours ago, when the three shadows walking through the forest stopped in the port town for a glass of ale. A message left in his residence taunting the townsfolk by a certain infamous Baron Vladimir of Nocturn Castle encouraged adventurers to dare and seek out Father Lin, \"so when you do find him, you can join him in his wonderful sacrifice\".");
+      
+      schedule(20000, "Who would be so brazen to leave such a taunt, and with the town knowing his whereabouts! How powerful is this man? The town immediately put a bounty on Baron Vladimir's head, but this didn't persuade the town's mercenaries' guild to act on this, who were all stricken with fear and grief.");
+      
+      schedule(28000, "That didn't stop the three of you heading out into the forest to claim the bounty and save the man's life. The townspeople warned of guards and creatures at Nocturn Castle's entrance, but that's all the information they know.");
+      
+      schedule(32000, "Welcome to Nocturn.");
+      
+      schedule(33000, "Who are you?", true); // Unlocks input
+
+      set({ introTimers: timers });
+  },
+
+  resetGame: () => {
+      get().runIntro();
+  },
+
+  saveGame: () => {
+      const s = get();
+      const data = {
+        party: s.party,
+        inventory: s.inventory,
+        credits: s.credits,
+        currentRoomId: s.currentRoomId,
+        lootedChests: s.lootedChests
+      };
+      localStorage.setItem('rpg_save_v1', JSON.stringify(data));
+      set(state => ({ log: [...state.log, "Game Saved."] }));
+  },
+
+  loadGame: () => {
+      const raw = localStorage.getItem('rpg_save_v1');
+      if (!raw) return false;
+      
+      // Stop the intro if it's running
+      get().clearIntro();
+
+      const data = JSON.parse(raw);
+      set({
+        party: data.party, inventory: data.inventory, credits: data.credits, currentRoomId: data.currentRoomId,
+        lootedChests: data.lootedChests || [], log: ["Game Loaded."], isCombat: false, activeEnemies: [], battleQueue: [], isGameOver: false, isInputLocked: false, pendingChoice: null
+      });
+      return true;
+  },
+  // -------------------------------
 
   fullRestore: () => set(s => {
       const p = s.party.map(c => ({...c, hp: c.maxHp, mp: c.maxMp, status: []}));
       return { party: p, log: [...s.log, "Party fully rested."] };
   }),
-
-  saveGame: () => {
-    const s = get();
-    const data = {
-      party: s.party,
-      inventory: s.inventory,
-      credits: s.credits,
-      currentRoomId: s.currentRoomId,
-      lootedChests: s.lootedChests
-    };
-    localStorage.setItem('rpg_save_v1', JSON.stringify(data));
-    set(state => ({ log: [...state.log, "Game Saved."] }));
-  },
-
-  loadGame: () => {
-    const raw = localStorage.getItem('rpg_save_v1');
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-    set({
-      party: data.party, inventory: data.inventory, credits: data.credits, currentRoomId: data.currentRoomId,
-      lootedChests: data.lootedChests || [], log: ["Game Loaded."], isCombat: false, activeEnemies: [], battleQueue: [], isGameOver: false, pendingChoice: null
-    });
-    return true;
-  },
 
   getDerivedStats: (c: Character) => {
     const s = { ...c.stats };
@@ -173,30 +222,17 @@ export const useGameStore = create<GameState>((set, get) => ({
   }),
 
   unequipItem: (idx, slot, i=0) => set(s => { const p = [...s.party]; const c = p[idx]; const inv = [...s.inventory]; let r: string|null = null; if(slot==='weapon') { r=c.equipment.weapon; c.equipment.weapon=null; } else if(slot==='armor') { r=c.equipment.armor; c.equipment.armor=null; } else if(slot==='accessory') r=c.equipment.accessories.splice(i,1)[0]; if(r) inv.push(r); return { party: p, inventory: inv }; }),
-  
   useItem: (itemId, targetIdx = 0) => set(s => {
       const inv = [...s.inventory];
       const idx = inv.indexOf(itemId);
       if (idx === -1) return { log: [...s.log, "You don't have that."] };
-
       const item = getItem(itemId);
       if (!item || item.type !== 'consumable') return { log: [...s.log, "You can't use that."] };
-
       const p = [...s.party];
       const target = p[targetIdx];
-      
       let msg = `Used ${item.name}.`;
-      
-      if (item.effect?.startsWith('heal_')) {
-          const formula = item.effect.replace('heal_', '');
-          const val = calcVal(formula, target.stats, target.level);
-          target.hp = Math.min(target.maxHp, target.hp + val);
-          msg = `Healed ${target.name} for ${val} HP.`;
-      } else if (item.effect === 'restore_skill') {
-          target.mp = Math.min(target.maxMp, target.mp + 2);
-          msg = `Restored SP to ${target.name}.`;
-      }
-
+      if (item.effect?.startsWith('heal_')) { const val = calcVal(item.effect.replace('heal_', ''), target.stats, target.level); target.hp = Math.min(target.maxHp, target.hp + val); msg = `Healed ${target.name} for ${val} HP.`; }
+      else if (item.effect === 'restore_skill') { target.mp = Math.min(target.maxMp, target.mp + 2); msg = `Restored SP to ${target.name}.`; }
       inv.splice(idx, 1);
       return { party: p, inventory: inv, log: [...s.log, msg] };
   }),

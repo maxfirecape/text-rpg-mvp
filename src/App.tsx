@@ -20,6 +20,7 @@ function App() {
   const battleQueue = useGameStore(state => state.battleQueue);
   const isGameOver = useGameStore(state => state.isGameOver);
   const resetGame = useGameStore(state => state.resetGame);
+  const runIntro = useGameStore(state => state.runIntro);
   
   const [input, setInput] = useState("");
   const [isMuted, setIsMuted] = useState(false);
@@ -32,6 +33,12 @@ function App() {
       if (!aliases || aliases.length === 0) return "";
       return aliases.reduce((a, b) => a.length <= b.length ? a : b);
   };
+
+  // --- TRIGGER INTRO ON MOUNT ---
+  useEffect(() => {
+      runIntro();
+  }, []); // Run once
+  // ------------------------------
 
   useEffect(() => {
     const interval = setInterval(() => tick(1), 1000);
@@ -246,19 +253,17 @@ function App() {
             )}
         </div>
 
-        {/* LOG AREA UPDATED FOR TAGGED COLORS */}
         <div className="log-area">
             {log.map((l, i) => {
                 let color = '#ccc';
                 let text = l;
                 let weight = 'normal';
 
-                // Detect Tags
                 if (l.startsWith('|E|')) {
-                    color = '#ffe066'; // Yellow for Enemy
+                    color = '#ffe066'; 
                     text = l.replace('|E| ', '');
                 } else if (l.startsWith('|L|')) {
-                    color = '#00ffcc'; // Cyan for Level Up
+                    color = '#00ffcc'; 
                     text = l.replace('|L| ', '');
                     weight = 'bold';
                 }

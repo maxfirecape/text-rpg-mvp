@@ -51,7 +51,7 @@ const handleDialogue = (input: string, currentState: GameState) => {
   return false;
 };
 
-// ... (cmdLook, cmdExamine, cmdInventory, cmdStats, cmdEquipment, cmdSkills, cmdUnequip - SAME AS BEFORE)
+// ... (cmdLook, cmdExamine, etc. - SAME)
 const cmdLook = (args: string, currentState: GameState) => {
   const room = getRoom(currentState.currentRoomId);
   if (!room) return;
@@ -120,21 +120,17 @@ const cmdExamine = (args: string, currentState: GameState) => {
   store.getState().addLog(`You don't see '${args}' here.`);
 };
 
-// --- UPDATED CMD MOVE TO HANDLE NORTH AMBUSH ---
 const cmdMove = (dir: string, currentState: GameState) => {
   const room = getRoom(currentState.currentRoomId);
   const directionMap: { [key: string]: string } = { n: 'north', s: 'south', e: 'east', w: 'west', u: 'up', d: 'down' };
   const d = directionMap[dir] || dir;
 
-  // Change from 'west' to 'north' logic
   if (currentState.currentRoomId === 'room_01_cell' && d === 'north') {
       const doorId = 'room_01_cell_door';
       if (!currentState.lootedChests.includes(doorId)) {
           store.getState().addLog("You try to leave, but the door kicks open!");
-          // Load Warden (Head Guard)
           const g = enemiesData.find(e => e.id === 'warden_01'); 
           if (g) {
-              // Warden is a single boss, not a group
               const enemies = [{ 
                   ...g, 
                   id: `e${Date.now()}`, 
@@ -163,7 +159,6 @@ const cmdMove = (dir: string, currentState: GameState) => {
     store.getState().addLog("You can't go that way.");
   }
 };
-// ---------------------------------------------
 
 const cmdInventory = () => {
   const { credits, inventory } = store.getState();
@@ -387,6 +382,7 @@ const cmdUse = (args: string, currentState: GameState) => {
     store.getState().useItem(item.id, tIdx);
 };
 
+// ... (cmdOpen, cmdHelp - SAME)
 const cmdOpen = (args: string, currentState: GameState) => {
   const room = getRoom(currentState.currentRoomId);
   if (!room || !room.interactables) { store.getState().addLog("Nothing to open."); return; }
@@ -422,7 +418,7 @@ const cmdOpen = (args: string, currentState: GameState) => {
         const g = enemiesData.find(e => e.id === obj.ambushEnemyId);
         if (g) {
             const enemies = ['A', 'B', 'C'].map((l, i) => ({ 
-                ...g, id: `e${Date.now()}_${i}`, name: `${g.name} ${l}`, hp: g.hp, maxHp: g.maxHp, status: [], loot: [...(g.loot||[])] 
+                ...g, id: `e${Date.now()}_${i}`, name: `${g.name} ${l}`, hp: g.hp, maxHp: g.maxHp, status: [], moves: g.moves || [], loot: [...(g.loot||[])] 
             } as Enemy));
             
             store.getState().addLog(`AMBUSH! ${enemies.length} ${g.name}s attack!`);
@@ -444,8 +440,59 @@ const cmdOpen = (args: string, currentState: GameState) => {
   store.getState().addLog("It won't open.");
 };
 
-const cmdHelp = () => {
-  store.getState().addLog("COMMANDS: look, i, stats, eq, attack, cast, reset");
+const cmdHelp = (args: string, currentState: GameState) => {
+  const lowerArg = args.toLowerCase();
+
+  // 1. Character Creation Context
+  if (currentState.party.length < 3) {
+      if (!args) {
+          store.getState().addLog("You can choose 3 characters to guide you throughout your quests; they will all remain in your party through the adventure. Characters vary in starting stats, skills, equipment, and starting items. Each of your 3 characters will be assigned a number id that can be used with items and abilities, where commands such as \"cast heal on Fighter\" or \"use skills potion on Cleric\" can be reduced to \"c h 1\". or \"u sp 2\".");
+          return;
+      }
+
+      // Helper to format class info
+      const getClassHelp = (id: string, desc: string) => {
+          const cls = classesData.find(c => c.id === id);
+          if (!cls) return desc;
+          
+          const skillNames = cls.startingSkills?.map(sid => findSkill(sid)?.name || sid).join(', ') || "None";
+          
+          const itemCounts: {[key:string]: number} = {};
+          cls.startingItems.forEach(iid => { itemCounts[iid] = (itemCounts[iid] || 0) + 1; });
+          const itemStr = Object.entries(itemCounts).map(([iid, count]) => `${findItem(iid)?.name || iid} x${count}`).join(', ');
+
+          return `${desc} ${cls.name}s start with: ${skillNames} and ${itemStr}.`;
+      };
+
+      if (lowerArg === 'fighter' || lowerArg === 'f') {
+          store.getState().addLog(getClassHelp('fighter', "Fighters use heavy physical attacks to deal massive enemy damage in a single turn, and can buff himself."));
+          return;
+      }
+      if (lowerArg === 'rogue' || lowerArg === 'r') {
+          store.getState().addLog(getClassHelp('rogue', "Rogues can unlock doors and steal from enemies."));
+          return;
+      }
+      if (lowerArg === 'wizard' || lowerArg === 'w') {
+          store.getState().addLog(getClassHelp('wizard', "Wizards can ignite enemies, freeze them, or stun them with lightning. What else can they learn?"));
+          return;
+      }
+      if (lowerArg === 'cleric' || lowerArg === 'c') {
+          store.getState().addLog(getClassHelp('cleric', "Clerics have high HP and the strongest healing spells - no adventurer should journey without one!"));
+          return;
+      }
+      return;
+  }
+
+  // 2. Exploration / Combat Context
+  store.getState().addLog("--- COMMANDS ---");
+  store.getState().addLog("look (l), examine (x) [thing]");
+  store.getState().addLog("move (n, s, e, w)");
+  store.getState().addLog("open [thing], use (u) [item]");
+  store.getState().addLog("inventory (i), equipment (eq)");
+  store.getState().addLog("stats, skills");
+  store.getState().addLog("equip [item], unequip [slot]");
+  store.getState().addLog("attack (a), cast (c)");
+  store.getState().addLog("save, load, reset");
 };
 
 export const processCommand = (input: string) => {
@@ -455,13 +502,36 @@ export const processCommand = (input: string) => {
   
   if (currentState.isGameOver) return; 
 
-  // --- NEW: HANDLE PENDING CHOICE ---
+  const parts = clean.split(" ");
+  const command = parts[0].toLowerCase();
+  const args = parts.slice(1).join(" ");
+
+  // --- SYSTEM COMMANDS (Always available) ---
+  if (command === 'save') {
+      store.getState().saveGame();
+      store.getState().addLog(`> ${input}`);
+      return;
+  }
+  if (command === 'load') {
+      const loaded = store.getState().loadGame();
+      if (!loaded) store.getState().addLog("No save file found.");
+      else store.getState().addLog("Game Loaded.");
+      return;
+  }
+  if (command === 'reset') {
+      store.getState().resetGame();
+      store.getState().addLog("Game Reset.");
+      return;
+  }
+  // ------------------------------------------
+
+  // Check pending choice before input lock
   if (currentState.pendingChoice) {
       if (currentState.pendingChoice.type === 'equip_replace') {
           const choice = parseInt(clean);
           if ([1, 2, 3].includes(choice)) {
               const { charIdx, itemId } = currentState.pendingChoice.data;
-              store.getState().equipItem(charIdx, itemId, choice - 1); // 0-based index
+              store.getState().equipItem(charIdx, itemId, choice - 1); 
           } else {
               store.getState().addLog("Invalid choice. Cancelled.");
               store.getState().setPendingChoice(null);
@@ -469,13 +539,11 @@ export const processCommand = (input: string) => {
           return;
       }
   }
-  // ----------------------------------
 
-  const parts = clean.split(" ");
-  const command = parts[0].toLowerCase();
-  const args = parts.slice(1).join(" ");
-
+  // Log user input
   store.getState().addLog(`> ${input}`);
+
+  // Checks that block gameplay commands
   if (handleDialogue(clean, currentState)) return;
   if (currentState.isInputLocked) return;
 
@@ -483,14 +551,24 @@ export const processCommand = (input: string) => {
     if (!currentState.tempCharacterName) {
       if (clean.length < 2) { store.getState().addLog("Name too short."); return; }
       
+      if (command === 'help' || command === 'h') {
+          cmdHelp(args, currentState);
+          return;
+      }
+
       if (currentState.party.some(c => c.name.toLowerCase() === clean.toLowerCase())) {
           store.getState().addLog("Name already taken."); 
           return;
       }
 
       store.getState().setTempName(clean);
-      store.getState().addLog(`Welcome, ${clean}. Choose Class: [rogue], [fighter], [wizard], [cleric]`);
+      store.getState().addLog(`Welcome, ${clean}. Choose Class: [rogue (r)], [fighter (f)], [wizard (w)], [cleric (c)]`);
     } else {
+      if (command === 'help' || command === 'h') {
+          cmdHelp(args, currentState);
+          return;
+      }
+
       const aliasMap: {[key: string]: string} = { 'f': 'fighter', 'r': 'rogue', 'w': 'wizard', 'c': 'cleric' };
       const resolvedClass = aliasMap[command] || command;
       
@@ -559,25 +637,14 @@ export const processCommand = (input: string) => {
     case 'open':
       cmdOpen(args, currentState); break;
     case 'h': case 'help':
-      cmdHelp(); break;
-    case 'save':
-      store.getState().saveGame();
-      break;
-    case 'load':
-      const loaded = store.getState().loadGame();
-      if (!loaded) store.getState().addLog("No save file found.");
-      break;
-    case 'reset': 
-      store.getState().resetGame();
-      store.getState().addLog("Game Reset.");
-      break;
+      cmdHelp(args, currentState); break;
     case 'a': case 'attack': case 'kill': case 'hit':
       cmdCombatAction(command, args, currentState); 
       break;
     case 'c': case 'cast': 
       cmdCombatAction(command, args, currentState); 
       break;
-    case 'use': 
+    case 'u': case 'use': 
       cmdUse(args, currentState);
       break;
     default:
