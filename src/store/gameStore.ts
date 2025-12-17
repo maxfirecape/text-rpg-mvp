@@ -114,16 +114,16 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       addLog("In the dead of midnight, below the radiant crescent shaped moon, stood a crooked looking castle, tall and wide, at the edge of a mountain valley, nestled at the edge of a forest. A path extends out from the castle into the forest and out into a clearing with a small port town. At the end of this eerie path, heading from the village towards the castle, were three shadows on a mission - to rescue the port town chapel's head priest - Father Lin.");
 
-      // --- UPDATED TIMINGS (8s, 8s, 6s, 5s) ---
-      schedule(8000, "His kidnapping was swift, and happened a mere five hours ago, when the three shadows walking through the forest stopped in the port town for a glass of ale. A message left in his residence taunting the townsfolk by a certain infamous Baron Vladimir of Nocturn Castle encouraged adventurers to dare and seek out Father Lin, \"so when you do find him, you can join him in his wonderful sacrifice\".");
+      // --- TIMINGS SCALED BY 1.4 ---
+      schedule(11200, "His kidnapping was swift, and happened a mere five hours ago, when the three shadows walking through the forest stopped in the port town for a glass of ale. A message left in his residence taunting the townsfolk by a certain infamous Baron Vladimir of Nocturn Castle encouraged adventurers to dare and seek out Father Lin, \"so when you do find him, you can join him in his wonderful sacrifice\".");
       
-      schedule(16000, "Who would be so brazen to leave such a taunt, and with the town knowing his whereabouts! How powerful is this man? The town immediately put a bounty on Baron Vladimir's head, but this didn't persuade the town's mercenaries' guild to act on this, who were all stricken with fear and grief.");
+      schedule(22400, "Who would be so brazen to leave such a taunt, and with the town knowing his whereabouts! How powerful is this man? The town immediately put a bounty on Baron Vladimir's head, but this didn't persuade the town's mercenaries' guild to act on this, who were all stricken with fear and grief.");
       
-      schedule(22000, "That didn't stop the three of you heading out into the forest to claim the bounty and save the man's life. The townspeople warned of guards and creatures at Nocturn Castle's entrance, but that's all the information they know.");
+      schedule(30800, "That didn't stop the three of you heading out into the forest to claim the bounty and save the man's life. The townspeople warned of guards and creatures at Nocturn Castle's entrance, but that's all the information they know.");
       
-      schedule(27000, "Welcome to Everlasting Night.");
+      schedule(37800, "Welcome to Everlasting Night.");
       
-      schedule(28000, "Who are you?", true); // Unlocks input
+      schedule(39200, "Who are you?", true); // Unlocks input
 
       set({ introTimers: timers });
   },
