@@ -13,7 +13,7 @@ const skillsData = skillsDataJson as unknown as Skill[];
 const classesData = classesDataJson as unknown as Class[];
 const enemiesData = enemiesDataJson as unknown as Enemy[];
 
-// ... (Helpers - SAME)
+// --- HELPERS ---
 const getRoom = (id: string): Room | undefined => roomsData.find(r => r.id === id);
 const findItem = (q: string): Item | undefined => itemsData.find(i => i.id === q || i.name.toLowerCase() === q || i.aliases?.includes(q));
 const findSkill = (q: string): Skill | undefined => skillsData.find(s => s.id === q || s.name.toLowerCase() === q || s.aliases?.includes(q));
@@ -51,7 +51,7 @@ const handleDialogue = (input: string, currentState: GameState) => {
   return false;
 };
 
-// ... (cmdLook, cmdExamine, etc - SAME)
+// --- COMMAND HANDLERS ---
 const cmdLook = (args: string, currentState: GameState) => {
   const room = getRoom(currentState.currentRoomId);
   if (!room) return;
@@ -76,7 +76,6 @@ const cmdExamine = (args: string, currentState: GameState) => {
     const key = Object.keys(room.interactables).find(k => k.toLowerCase() === target);
     if (key) {
       const obj = room.interactables[key];
-      
       if (obj.onOpen === 'battle' && obj.ambushEnemyId) {
           store.getState().addLog(obj.message);
           const g = enemiesData.find(e => e.id === obj.ambushEnemyId);
@@ -86,14 +85,12 @@ const cmdExamine = (args: string, currentState: GameState) => {
           }
           return;
       }
-      
       if (obj.onOpen === 'heal') {
           store.getState().addLog(obj.message);
           store.getState().addLog("You rest and recover your strength.");
           store.getState().fullRestore();
           return;
       }
-
       if (key === "prisoner" || key === "rex") {
         store.getState().setDialogue("rex_intro");
         store.getState().setInputLock(true);
@@ -132,17 +129,7 @@ const cmdMove = (dir: string, currentState: GameState) => {
           const g = enemiesData.find(e => e.id === 'warden_01'); 
           if (g) {
               const enemies = [{ 
-                  ...g, 
-                  id: `e${Date.now()}`, 
-                  name: g.name, 
-                  hp: g.hp, 
-                  maxHp: g.maxHp, 
-                  status: [], 
-                  moves: g.moves || [],
-                  loot: [...(g.loot||[])],
-                  state: 'idle',
-                  atbTimer: 3,
-                  phases: []
+                  ...g, id: `e${Date.now()}`, name: g.name, hp: g.hp, maxHp: g.maxHp, status: [], moves: g.moves || [], loot: [...(g.loot||[])], state: 'idle', atbTimer: 3, phases: []
               } as Enemy];
               store.getState().startCombat(enemies);
               store.getState().setChestLooted(doorId); 
@@ -195,14 +182,10 @@ const cmdStats = (args: string, currentState: GameState) => {
 const cmdEquipment = (args: string, currentState: GameState) => {
   const targetIdx = resolvePartyIndex(args, currentState.party);
   const targets = targetIdx !== -1 ? [currentState.party[targetIdx]] : currentState.party;
-
   targets.forEach(c => {
       const w = c.equipment.weapon ? (findItem(c.equipment.weapon)?.name || c.equipment.weapon) : "None";
       const a = c.equipment.armor ? (findItem(c.equipment.armor)?.name || c.equipment.armor) : "None";
-      const acc = c.equipment.accessories.length > 0
-          ? c.equipment.accessories.map(id => findItem(id)?.name || id).join(", ")
-          : "None";
-
+      const acc = c.equipment.accessories.length > 0 ? c.equipment.accessories.map(id => findItem(id)?.name || id).join(", ") : "None";
       store.getState().addLog(`[${c.name}]`);
       store.getState().addLog(`  Weapon: ${w}`);
       store.getState().addLog(`  Armor:  ${a}`);
@@ -249,295 +232,146 @@ const cmdUnequip = (args: string, currentState: GameState) => {
 
 const cmdCombatAction = (command: string, args: string, currentState: GameState) => {
   if (!currentState.isCombat) { store.getState().addLog("There is no one to fight."); return; }
-  
   const currentActorId = currentState.battleQueue[0];
-  if (!currentActorId) {
-      store.getState().addLog("Wait for your turn!");
-      return;
-  }
-
+  if (!currentActorId) { store.getState().addLog("Wait for your turn!"); return; }
   const actorIndex = currentState.party.findIndex(c => c.id === currentActorId);
   const actor = currentState.party[actorIndex];
-
   const potentialName = args.split(" ")[0];
   const namedIndex = resolvePartyIndex(potentialName, currentState.party);
-  
   const potentialSkill = findSkill(potentialName);
   const potentialItem = findItem(potentialName);
   const isAmbiguousAlias = !!potentialSkill || !!potentialItem;
-
-  let intendedActorChange = false;
-  if (namedIndex !== -1 && currentState.party[namedIndex].id !== currentActorId) {
-      if (isAmbiguousAlias) {
-          intendedActorChange = false; 
-      } else {
-          intendedActorChange = true;
-      }
-  }
-
-  if (intendedActorChange) {
+  if (namedIndex !== -1 && currentState.party[namedIndex].id !== currentActorId && !isAmbiguousAlias) {
       store.getState().addLog(`It's not ${currentState.party[namedIndex].name}'s turn! It's ${actor.name}'s turn.`);
       return;
   }
-
   let cleanArgs = args;
-  if (namedIndex !== -1 && !isAmbiguousAlias) {
-      cleanArgs = args.substring(potentialName.length).trim();
-  }
-
-  // Attack
+  if (namedIndex !== -1 && !isAmbiguousAlias) cleanArgs = args.substring(potentialName.length).trim();
   if (['attack', 'a', 'kill', 'hit'].includes(command)) {
     const tIdx = resolveEnemyIndex(cleanArgs, currentState.activeEnemies);
     store.getState().performAction(actorIndex, 'attack', tIdx, 'enemy');
   } 
-  // Cast / Use Skill
   else if (['cast', 'c', 'use'].includes(command)) {
-    let spellStr = cleanArgs;
-    let targetStr = "";
-
-    if (cleanArgs.includes(" on ")) {
-      const parts = cleanArgs.split(" on ");
-      spellStr = parts[0];
-      targetStr = parts[1];
-    } 
-    else if (cleanArgs.includes(" from ")) {
-      const parts = cleanArgs.split(" from ");
-      spellStr = parts[0];
-      targetStr = parts[1];
-    }
+    let spellStr = cleanArgs; let targetStr = "";
+    if (cleanArgs.includes(" on ")) { const parts = cleanArgs.split(" on "); spellStr = parts[0]; targetStr = parts[1]; } 
+    else if (cleanArgs.includes(" from ")) { const parts = cleanArgs.split(" from "); spellStr = parts[0]; targetStr = parts[1]; }
     else {
       const parts = cleanArgs.split(" ");
       if (parts.length > 1) {
           const last = parts[parts.length - 1].toLowerCase();
-          if (/^[a-c1-3]$/.test(last) || last.startsWith('hero') || last.startsWith('guard')) {
-              targetStr = parts.pop()!;
-              spellStr = parts.join(" ");
-          } else {
-              if (resolveEnemyIndex(last, currentState.activeEnemies) !== -1 || resolvePartyIndex(last, currentState.party) !== -1) {
-                  targetStr = parts.pop()!;
-                  spellStr = parts.join(" ");
-              }
+          if (/^[a-c1-3]$/.test(last) || last.startsWith('hero') || last.startsWith('guard') || resolveEnemyIndex(last, currentState.activeEnemies) !== -1 || resolvePartyIndex(last, currentState.party) !== -1) {
+              targetStr = parts.pop()!; spellStr = parts.join(" ");
           }
       }
     }
-
     let actionId = "";
     const skill = findSkill(spellStr);
-    if (skill) {
-        actionId = skill.id;
-    } else {
-        const item = findItem(spellStr);
-        if (item) actionId = item.id;
-    }
-
+    if (skill) actionId = skill.id; else { const item = findItem(spellStr); if (item) actionId = item.id; }
     if (!actionId) { store.getState().addLog("Unknown skill or item."); return; }
-
     let isFriendly = false;
-    if (skill) {
-        isFriendly = ['heal', 'buff', 'revive', 'restore_mp'].includes(skill.type);
-    } else if (actionId) {
+    if (skill) isFriendly = ['heal', 'buff', 'revive', 'restore_mp'].includes(skill.type);
+    else if (actionId) {
         const it = findItem(actionId);
-        if (it && it.effect) {
-            isFriendly = it.effect.startsWith('heal_') || 
-                         it.effect.startsWith('restore_') || 
-                         it.effect === 'revive' || 
-                         it.effect.startsWith('buff_');
-        }
+        if (it && it.effect) isFriendly = it.effect.startsWith('heal_') || it.effect.startsWith('restore_') || it.effect === 'revive' || it.effect.startsWith('buff_');
     }
-    
     if (isFriendly) {
         let tIdx = resolvePartyIndex(targetStr, currentState.party);
         if (tIdx === -1 && !targetStr) tIdx = actorIndex;
-        
-        if (tIdx !== -1) {
-            store.getState().performAction(actorIndex, actionId, tIdx, 'party');
-            return;
-        }
+        if (tIdx !== -1) { store.getState().performAction(actorIndex, actionId, tIdx, 'party'); return; }
     }
-
     const enemyTargetIdx = resolveEnemyIndex(targetStr || "", currentState.activeEnemies);
     store.getState().performAction(actorIndex, actionId, enemyTargetIdx, 'enemy');
   }
 };
 
 const cmdUse = (args: string, currentState: GameState) => {
-    if (currentState.isCombat) {
-        cmdCombatAction('use', args, currentState);
-        return;
-    }
-
-    const parts = args.split(" on ");
-    const itemName = parts[0];
-    const targetName = parts[1];
-
-    const item = findItem(itemName);
-    if (!item) { store.getState().addLog("Unknown item."); return; }
-
+    if (currentState.isCombat) { cmdCombatAction('use', args, currentState); return; }
+    const parts = args.split(" on "); const itemName = parts[0]; const targetName = parts[1];
+    const item = findItem(itemName); if (!item) { store.getState().addLog("Unknown item."); return; }
     let tIdx = 0;
-    if (targetName) {
-        tIdx = resolvePartyIndex(targetName, currentState.party);
-        if (tIdx === -1) { store.getState().addLog("Target not found."); return; }
-    }
-
+    if (targetName) { tIdx = resolvePartyIndex(targetName, currentState.party); if (tIdx === -1) { store.getState().addLog("Target not found."); return; } }
     store.getState().useItem(item.id, tIdx);
 };
 
-// ... (cmdOpen, cmdHelp - UPDATED)
 const cmdOpen = (args: string, currentState: GameState) => {
   const room = getRoom(currentState.currentRoomId);
   if (!room || !room.interactables) { store.getState().addLog("Nothing to open."); return; }
   const target = args.toLowerCase();
-
   const interactableKey = Object.keys(room.interactables).find(k => k.toLowerCase() === target);
-  
   if (interactableKey) {
     const obj = room.interactables[interactableKey];
     const objectId = room.id + "_" + interactableKey;
-
-    if (currentState.lootedChests.includes(objectId)) {
-        store.getState().addLog("It's empty.");
-        return;
-    }
-
+    if (currentState.lootedChests.includes(objectId)) { store.getState().addLog("It's empty."); return; }
     if (obj.locked && obj.reqKey) {
-        if (!currentState.inventory.includes(obj.reqKey)) {
-             const keyItem = findItem(obj.reqKey);
-             store.getState().addLog(`It's locked. You need a ${keyItem?.name || 'Key'}.`);
-             return;
-        }
+        if (!currentState.inventory.includes(obj.reqKey)) { const keyItem = findItem(obj.reqKey); store.getState().addLog(`It's locked. You need a ${keyItem?.name || 'Key'}.`); return; }
         store.getState().addLog("You unlock it.");
-    } else if (obj.locked) {
-        if (!obj.onOpen) {
-            store.getState().addLog("It's locked tight.");
-            return;
-        }
-    }
-
+    } else if (obj.locked && !obj.onOpen) { store.getState().addLog("It's locked tight."); return; }
     if (obj.onOpen === 'ambush' && obj.ambushEnemyId) {
         store.getState().addLog(`You open the ${interactableKey}...`);
         const g = enemiesData.find(e => e.id === obj.ambushEnemyId);
         if (g) {
-            const enemies = ['A', 'B', 'C'].map((l, i) => ({ 
-                ...g, id: `e${Date.now()}_${i}`, name: `${g.name} ${l}`, hp: g.hp, maxHp: g.maxHp, status: [], moves: g.moves || [], loot: [...(g.loot||[])] 
-            } as Enemy));
-            
-            store.getState().addLog(`AMBUSH! ${enemies.length} ${g.name}s attack!`);
+            const enemies = [{ ...g, id: `e${Date.now()}`, name: g.name, hp: g.hp, maxHp: g.maxHp, status: [], moves: g.moves || [], loot: [...(g.loot||[])], state: 'idle', atbTimer: 3, phases: [] } as Enemy];
+            store.getState().addLog(`AMBUSH! ${g.name} attacks!`);
             store.getState().startCombat(enemies);
             store.getState().setChestLooted(objectId); 
         }
         return;
     }
-
     if (obj.loot) {
-        const item = findItem(obj.loot);
-        store.getState().addLog(`You find a ${item?.name || obj.loot}!`);
-        store.getState().addToInventory(obj.loot);
-        store.getState().setChestLooted(objectId);
+        const item = findItem(obj.loot); store.getState().addLog(`You find a ${item?.name || obj.loot}!`);
+        store.getState().addToInventory(obj.loot); store.getState().setChestLooted(objectId);
         return;
     }
   }
-  
   store.getState().addLog("It won't open.");
 };
 
 const cmdHelp = (args: string, currentState: GameState) => {
   const lowerArg = args.toLowerCase();
-
-  // 1. Character Creation Context
   if (currentState.party.length < 3) {
       if (!args) {
           store.getState().addLog("You can choose 3 characters to guide you throughout your quests; they will all remain in your party through the adventure. Characters vary in starting stats, skills, equipment, and starting items. Each of your 3 characters will be assigned a number id that can be used with items and abilities, where commands such as \"cast heal on Fighter\" or \"use skills potion on Cleric\" can be reduced to \"c h 1\". or \"u sp 2\".");
           return;
       }
-
-      // Helper to format class info
       const getClassHelp = (id: string, desc: string) => {
           const cls = classesData.find(c => c.id === id);
           if (!cls) return desc;
-          
           const skillNames = cls.startingSkills?.map(sid => findSkill(sid)?.name || sid).join(', ') || "None";
-          
           const itemCounts: {[key:string]: number} = {};
           cls.startingItems.forEach(iid => { itemCounts[iid] = (itemCounts[iid] || 0) + 1; });
           const itemStr = Object.entries(itemCounts).map(([iid, count]) => `${findItem(iid)?.name || iid} x${count}`).join(', ');
-
           return `${desc} ${cls.name}s start with: ${skillNames} and ${itemStr}.`;
       };
-
-      if (lowerArg === 'fighter' || lowerArg === 'f') {
-          store.getState().addLog(getClassHelp('fighter', "Fighters use heavy physical attacks to deal massive damage to their enemies, and can buff themselves."));
-          return;
-      }
-      if (lowerArg === 'rogue' || lowerArg === 'r') {
-          store.getState().addLog(getClassHelp('rogue', "Rogues can unlock doors and steal from enemies."));
-          return;
-      }
-      if (lowerArg === 'wizard' || lowerArg === 'w') {
-          store.getState().addLog(getClassHelp('wizard', "Wizards can ignite enemies, freeze them, or stun them with lightning. What else can they learn?"));
-          return;
-      }
-      if (lowerArg === 'cleric' || lowerArg === 'c') {
-          store.getState().addLog(getClassHelp('cleric', "Clerics have high HP and the strongest healing spells - no adventurer should journey without one!"));
-          return;
-      }
+      if (lowerArg === 'fighter' || lowerArg === 'f') { store.getState().addLog(getClassHelp('fighter', "Fighters use heavy physical attacks to deal massive damage to their enemies, and can buff themselves.")); return; }
+      if (lowerArg === 'rogue' || lowerArg === 'r') { store.getState().addLog(getClassHelp('rogue', "Rogues can unlock doors and steal from enemies.")); return; }
+      if (lowerArg === 'wizard' || lowerArg === 'w') { store.getState().addLog(getClassHelp('wizard', "Wizards can ignite enemies, freeze them, or stun them with lightning. What else can they learn?")); return; }
+      if (lowerArg === 'cleric' || lowerArg === 'c') { store.getState().addLog(getClassHelp('cleric', "Clerics have high HP and the strongest healing spells - no adventurer should journey without one!")); return; }
       return;
   }
-
-  // 2. Exploration / Combat Context
   store.getState().addLog("--- COMMANDS ---");
-  store.getState().addLog("look (l), examine (x) [thing]");
-  store.getState().addLog("move (n, s, e, w)");
-  store.getState().addLog("open [thing], use (u) [item]");
-  store.getState().addLog("inventory (i), equipment (eq)");
-  store.getState().addLog("stats, skills");
-  store.getState().addLog("equip [item], unequip [slot]");
-  store.getState().addLog("attack (a), cast (c)");
-  store.getState().addLog("save, load, reset");
+  store.getState().addLog("look (l), examine (x) [thing], move (n, s, e, w), open [thing], use (u) [item], inventory (i), equipment (eq), stats, skills, equip [item], unequip [slot], attack (a), cast (c), save, load, reset");
 };
 
 export const processCommand = (input: string) => {
   const currentState = store.getState();
   const clean = input.trim();
   if (!clean) return;
-  
   if (currentState.isGameOver) return; 
-
-  if (currentState.pendingChoice) {
-      if (currentState.pendingChoice.type === 'equip_replace') {
-          const choice = parseInt(clean);
-          if ([1, 2, 3].includes(choice)) {
-              const { charIdx, itemId } = currentState.pendingChoice.data;
-              store.getState().equipItem(charIdx, itemId, choice - 1); 
-          } else {
-              store.getState().addLog("Invalid choice. Cancelled.");
-              store.getState().setPendingChoice(null);
-          }
-          return;
-      }
-  }
 
   const parts = clean.split(" ");
   const command = parts[0].toLowerCase();
   const args = parts.slice(1).join(" ");
 
-  // --- SYSTEM COMMANDS (Always available) ---
-  if (command === 'save') {
-      store.getState().saveGame();
-      store.getState().addLog(`> ${input}`);
+  if (command === 'save') { store.getState().saveGame(); return; }
+  if (command === 'load') { store.getState().loadGame(); return; }
+  if (command === 'reset') { store.getState().resetGame(); return; }
+
+  if (currentState.pendingChoice?.type === 'equip_replace') {
+      const choice = parseInt(clean);
+      if ([1, 2, 3].includes(choice)) store.getState().equipItem(currentState.pendingChoice.data.charIdx, currentState.pendingChoice.data.itemId, choice - 1); 
+      else { store.getState().addLog("Invalid choice. Cancelled."); store.getState().setPendingChoice(null); }
       return;
   }
-  if (command === 'load') {
-      const loaded = store.getState().loadGame();
-      if (!loaded) store.getState().addLog("No save file found.");
-      else store.getState().addLog("Game Loaded.");
-      return;
-  }
-  if (command === 'reset') {
-      store.getState().resetGame();
-      store.getState().addLog("Game Reset.");
-      return;
-  }
-  // ------------------------------------------
 
   store.getState().addLog(`> ${input}`);
   if (handleDialogue(clean, currentState)) return;
@@ -546,104 +380,55 @@ export const processCommand = (input: string) => {
   if (currentState.party.length < 3) {
     if (!currentState.tempCharacterName) {
       if (clean.length < 2) { store.getState().addLog("Name too short."); return; }
-      
-      if (command === 'help' || command === 'h') {
-          cmdHelp(args, currentState);
-          return;
-      }
-
-      if (currentState.party.some(c => c.name.toLowerCase() === clean.toLowerCase())) {
-          store.getState().addLog("Name already taken."); 
-          return;
-      }
-
+      if (command === 'help' || command === 'h') { cmdHelp(args, currentState); return; }
+      if (currentState.party.some(c => c.name.toLowerCase() === clean.toLowerCase())) { store.getState().addLog("Name already taken."); return; }
       store.getState().setTempName(clean);
-      store.getState().addLog(`Welcome, ${clean}. Choose Class: [rogue (r)], [fighter (f)], [wizard (w)], [cleric (c)]`);
+      store.getState().addLog(`Welcome ${clean}. Choose Class: [rogue (r)], [fighter (f)], [wizard (w)], [cleric (c)], or press 'help' for general help or 'help [class]' for class help.`);
     } else {
-      if (command === 'help' || command === 'h') {
-          cmdHelp(args, currentState);
-          return;
-      }
-
+      if (command === 'help' || command === 'h') { cmdHelp(args, currentState); return; }
       const aliasMap: {[key: string]: string} = { 'f': 'fighter', 'r': 'rogue', 'w': 'wizard', 'c': 'cleric' };
       const resolvedClass = aliasMap[command] || command;
-      
       const cls = classesData.find(c => c.id === resolvedClass || c.name.toLowerCase() === resolvedClass);
-
       if (cls) {
         // @ts-ignore
         const startingSkills = cls.startingSkills || [];
-
         const initEquip = { weapon: null as string|null, armor: null as string|null, accessories: [] as string[] };
         cls.startingEquipment.forEach(id => {
             const item = findItem(id);
-            if(item?.type === 'weapon') initEquip.weapon = id;
-            else if(item?.type === 'armor') initEquip.armor = id;
-            else if(item?.type === 'accessory') initEquip.accessories.push(id);
+            if(item?.type === 'weapon') initEquip.weapon = id; else if(item?.type === 'armor') initEquip.armor = id; else if(item?.type === 'accessory') initEquip.accessories.push(id);
         });
-
         const newHero: Character = {
-          id: `h${Date.now()}`,
-          name: currentState.tempCharacterName,
-          classId: cls.id,
-          level: 1, xp: 0, maxXp: 100,
-          hp: 20 + cls.stats.con, maxHp: 20 + cls.stats.con,
-          mp: cls.stats.skillSlots, maxMp: cls.stats.skillSlots,
-          stats: cls.stats,
-          equipment: initEquip, 
-          isPlayerControlled: true,
-          status: [],
-          unlockedSkills: startingSkills,
-          atbTimer: 0
+          id: `h${Date.now()}`, name: currentState.tempCharacterName, classId: cls.id, level: 1, xp: 0, maxXp: 100, hp: 20 + cls.stats.con, maxHp: 20 + cls.stats.con, mp: cls.stats.skillSlots, maxMp: cls.stats.skillSlots, stats: cls.stats, equipment: initEquip, isPlayerControlled: true, status: [], unlockedSkills: startingSkills, atbTimer: 0
         };
-
         store.getState().addCharacter(newHero, cls.startingCredits);
         cls.startingItems.forEach(id => store.getState().addToInventory(id));
-        
-        store.getState().addLog(`Registered ${newHero.name}.`);
+        store.getState().addLog(`Registered ${newHero.name} the ${cls.name}.`);
+        store.getState().setTempName(null);
         if (store.getState().party.length < 3) store.getState().addLog(`Enter Name for Hero ${store.getState().party.length + 1}:`);
         else {
           store.getState().addLog("INITIALIZATION COMPLETE.");
           setTimeout(() => { const r = getRoom(store.getState().currentRoomId); if(r) store.getState().addLog(r.description); }, 1000);
         }
-      } else store.getState().addLog("Invalid Class.");
+      } else store.getState().addLog("Invalid Class. Choose: [rogue (r)], [fighter (f)], [wizard (w)], [cleric (c)]");
     }
     return;
   }
 
   switch (command) {
-    case 'n': case 's': case 'e': case 'w': case 'north': case 'south': case 'east': case 'west':
-      cmdMove(command, currentState); break;
-    case 'l': case 'look':
-      cmdLook(args, currentState); break;
-    case 'x': case 'examine': case 'check': case 'read': case 'search':
-      cmdExamine(args, currentState); break;
-    case 'i': case 'inv': case 'inventory':
-      cmdInventory(); break;
-    case 'stats': case 'score': case 'status':
-      cmdStats(args, currentState); break;
-    case 'eq': case 'gear': case 'equipment':
-      cmdEquipment(args, currentState); break;
-    case 'skills': case 'spells': case 'abilities':
-      cmdSkills(args, currentState); break;
-    case 'equip': case 'wear':
-      cmdEquip(args, currentState); break;
-    case 'unequip': case 'remove':
-      cmdUnequip(args, currentState); break;
-    case 'open':
-      cmdOpen(args, currentState); break;
-    case 'h': case 'help':
-      cmdHelp(args, currentState); break;
-    case 'a': case 'attack': case 'kill': case 'hit':
-      cmdCombatAction(command, args, currentState); 
-      break;
-    case 'c': case 'cast': 
-      cmdCombatAction(command, args, currentState); 
-      break;
-    case 'u': case 'use': 
-      cmdUse(args, currentState);
-      break;
-    default:
-      store.getState().addLog("I don't know how to do that.");
+    case 'n': case 's': case 'e': case 'w': case 'north': case 'south': case 'east': case 'west': cmdMove(command, currentState); break;
+    case 'l': case 'look': cmdLook(args, currentState); break;
+    case 'x': case 'examine': case 'check': case 'search': cmdExamine(args, currentState); break;
+    case 'i': case 'inv': case 'inventory': cmdInventory(); break;
+    case 'stats': case 'status': cmdStats(args, currentState); break;
+    case 'eq': case 'gear': case 'equipment': cmdEquipment(args, currentState); break;
+    case 'skills': case 'spells': cmdSkills(args, currentState); break;
+    case 'equip': case 'wear': cmdEquip(args, currentState); break;
+    case 'unequip': case 'remove': cmdUnequip(args, currentState); break;
+    case 'open': cmdOpen(args, currentState); break;
+    case 'h': case 'help': cmdHelp(args, currentState); break;
+    case 'a': case 'attack': case 'hit': cmdCombatAction(command, args, currentState); break;
+    case 'c': case 'cast': cmdCombatAction(command, args, currentState); break;
+    case 'u': case 'use': cmdUse(args, currentState); break;
+    default: store.getState().addLog("I don't know how to do that.");
   }
 };
