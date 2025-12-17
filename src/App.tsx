@@ -28,7 +28,6 @@ function App() {
 
   const currentRoom = roomsData.find(r => r.id === currentRoomId);
 
-  // --- HELPER: FIND SHORTEST ALIAS ---
   const getShortAlias = (aliases?: string[]) => {
       if (!aliases || aliases.length === 0) return "";
       return aliases.reduce((a, b) => a.length <= b.length ? a : b);
@@ -88,7 +87,6 @@ function App() {
       
       if (!activeChar) return <div style={{ color: '#666', fontStyle: 'italic', fontSize:'0.9em' }}>Waiting for turn...</div>;
 
-      // Count Inventory Items for display
       const invCounts: {[key:string]:number} = {};
       inventory.forEach(id => { invCounts[id] = (invCounts[id] || 0) + 1; });
 
@@ -99,7 +97,8 @@ function App() {
           </h4>
           <div style={{ marginBottom: '10px' }}>
             <div style={{ fontSize:'0.85em', color:'#ccc' }}>Attack (a)</div>
-            <div style={{ fontSize:'0.85em', color:'#ccc' }}>Defend (d)</div>
+            <div style={{ fontSize:'0.85em', color:'#ccc' }}>Cast (c)</div>
+            <div style={{ fontSize:'0.85em', color:'#ccc' }}>Use [item]</div>
           </div>
           <div style={{ marginBottom: '10px' }}>
             <div style={{ fontWeight:'bold', color:'white', fontSize:'0.8em' }}>SKILLS</div>

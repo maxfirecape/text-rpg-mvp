@@ -72,7 +72,7 @@ export type Character = {
   isPlayerControlled: boolean;
   status: StatusEffect[];
   unlockedSkills: string[];
-  atbTimer: number; // For Cooldowns
+  atbTimer: number; 
 };
 
 // 5. CLASSES
@@ -83,11 +83,23 @@ export type Class = {
   startingEquipment: string[];
   startingItems: string[];
   startingCredits: number;
-  startingSkills?: string[]; // Optional initial skills
+  startingSkills?: string[];
   unlocks: { [key: string]: string };
 };
 
-// 6. ENEMIES
+// 6. ENEMIES & AI
+export type EnemyMove = {
+  name: string;
+  type: 'attack' | 'heavy_attack' | 'aoe_attack' | 'heal' | 'summon';
+  chance: number;       // % chance (0-100)
+  chargeTime: number;   // Seconds to wait before executing
+  staggerChance: number;// Chance to be interrupted if hit (0.0 - 1.0)
+  msgPrep: string;
+  msgHit: string;
+  val?: number;         // Multiplier or Heal amount
+  summonId?: string;    // ID of enemy to summon
+};
+
 export type Enemy = {
   id: string;
   name: string;
@@ -97,22 +109,28 @@ export type Enemy = {
   xpReward: number;
   loot: string[];
   description?: string;
-  messages: { lowHealth: string; death: string };
+  messages?: { lowHealth?: string; death: string; [key: string]: string | undefined };
   status: StatusEffect[];
   atbTimer?: number;
   state?: 'idle' | 'charging' | 'attacking';
+  
+  // AI Fields
+  moves: EnemyMove[];
+  currentMove?: EnemyMove; 
+  phases?: string[]; // Track "enraged", "tired" flags
+  spawnRequest?: string; // Internal flag for summoning
 };
 
 // 7. INTERACTABLES
 export type Interactable = {
-  type?: 'npc' | 'container' | 'door';
+  type?: 'npc' | 'container' | 'door' | 'event' | 'rest';
   name?: string;
   locked?: boolean;
-  reqKey?: string;       // ID of item needed to unlock
-  loot?: string;         // Item ID inside
+  reqKey?: string;       
+  loot?: string;         
   message: string;
-  onOpen?: 'ambush';     // Event trigger
-  ambushEnemyId?: string;// Enemy ID to spawn
+  onOpen?: 'ambush' | 'battle' | 'heal'; 
+  ambushEnemyId?: string;
 };
 
 // 8. ROOMS

@@ -1,7 +1,7 @@
 [
   {
     "id": "room_01_cell",
-    "name": "Dingy Cell Block, Colosseum Auxiliary Building",
+    "name": "Dingy Cell Block",
     "description": "Three heroes are locked in a cell with cobblestone floors and dimly lit torch lights.",
     "image": "https://placehold.co/600x400/1a1a2e/FFF?text=Cell+Block",
     "exits": {
@@ -9,15 +9,33 @@
     },
     "interactables": {
       "door": { 
-          "locked": true, 
           "type": "door",
+          "locked": true, 
           "message": "It's the cell door. It looks sturdy.",
           "onOpen": "ambush",
           "ambushEnemyId": "guard_01"
       },
-      "prisoner": { "type": "npc", "name": "Rex", "message": "He is staring at you, smirking, with eyes darkened by eye shadow and mascara." },
-      "desk": { "message": "A typical desk. Nothing seems remarkable about it." },
-      "bed": { "message": "These were not comfortable to sleep in last night." },
+      "bed": { 
+          "type": "rest", 
+          "message": "A stiff cot.", 
+          "onOpen": "heal" 
+      },
+      "warden_tutorial": { 
+          "type": "event", 
+          "name": "Warden Tutorial",
+          "message": "Simulating Warden Battle...", 
+          "onOpen": "battle",
+          "ambushEnemyId": "warden_01"
+      },
+      "harpie_battle": { 
+          "type": "event", 
+          "name": "Harpie Battle",
+          "message": "Simulating Harpie Battle...", 
+          "onOpen": "battle",
+          "ambushEnemyId": "harpie_01"
+      },
+      "prisoner": { "type": "npc", "name": "Rex", "message": "He is staring at you, smirking." },
+      "desk": { "message": "A typical desk." },
       "toilet": { "message": "It’s excruciatingly cold." }
     }
   },

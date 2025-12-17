@@ -4,17 +4,118 @@
     "name": "Prison Guard",
     "hp": 30,
     "maxHp": 30,
-    "stats": {
-      "str": 10,
-      "dex": 15
-    },
+    "stats": { "str": 10, "dex": 15 },
     "xpReward": 40,
     "loot": ["lucky_charm"],
-    "description": "Super de duper guard",
-    "messages": {
-      "lowHealth": "The Guard grunts and moans.",
-      "death": "The Guard has fallen!"
-    },
-    "status": []
+    "description": "A prison guard armed with a baton",
+    "messages": { "death": "The Guard has fallen!" },
+    "status": [],
+    "moves": [
+      {
+        "name": "Strike",
+        "type": "attack",
+        "chance": 100,
+        "chargeTime": 1.0,
+        "staggerChance": 1.0,
+        "msgPrep": "The Guard raises his baton!",
+        "msgHit": "The Guard strikes!"
+      }
+    ]
+  },
+  {
+    "id": "warden_01",
+    "name": "Warden",
+    "hp": 100,
+    "maxHp": 100,
+    "stats": { "str": 10, "dex": 15 },
+    "xpReward": 90,
+    "loot": ["hp_potion", "hp_potion", "skill_potion", "skill_potion"],
+    "description": "The head honcho of guards at Myrilan Prison",
+    "messages": { "death": "The Warden has fallen!" },
+    "status": [],
+    "moves": [
+      {
+        "name": "Regular Attack",
+        "type": "attack",
+        "chance": 65,
+        "chargeTime": 0.5,
+        "staggerChance": 0.5,
+        "msgPrep": "Warden readies his weapon!",
+        "msgHit": "Warden attacks!"
+      },
+      {
+        "name": "Heavy Attack",
+        "type": "heavy_attack",
+        "chance": 10,
+        "chargeTime": 0.5,
+        "staggerChance": 0.5,
+        "msgPrep": "Warden yells a battle cry!",
+        "msgHit": "Warden attacks!",
+        "val": 1.5
+      },
+      {
+        "name": "Reinforcements",
+        "type": "summon",
+        "chance": 10,
+        "chargeTime": 0.5,
+        "staggerChance": 0.0,
+        "msgPrep": "Warden reaches for his radio...",
+        "msgHit": "Warden called for reinforcements!",
+        "summonId": "guard_01"
+      },
+      {
+        "name": "Heal",
+        "type": "heal",
+        "chance": 15,
+        "chargeTime": 0.5,
+        "staggerChance": 0.5,
+        "msgPrep": "Warden reaches for a potion...",
+        "msgHit": "Warden drank a potion!",
+        "val": 2.0
+      }
+    ]
+  },
+  {
+    "id": "harpie_01",
+    "name": "Harpie",
+    "hp": 20,
+    "maxHp": 20,
+    "stats": { "str": 5, "dex": 20 },
+    "xpReward": 90,
+    "loot": ["hp_potion", "hp_potion", "skill_potion", "skill_potion"],
+    "description": "A beast with wings for arms and a sharp beak.",
+    "messages": { "death": "Harpie falls!" },
+    "status": [],
+    "moves": [
+      {
+        "name": "Regular Attack",
+        "type": "attack",
+        "chance": 65,
+        "chargeTime": 0.5,
+        "staggerChance": 0.5,
+        "msgPrep": "Harpie brandishes its fangs!",
+        "msgHit": "Harpie attacks!"
+      },
+      {
+        "name": "Scratch",
+        "type": "aoe_attack",
+        "chance": 30,
+        "chargeTime": 0.25,
+        "staggerChance": 0.0,
+        "msgPrep": "Harpie brandishes its claws!",
+        "msgHit": "Harpie attacks! Everyone grits their teeth.",
+        "val": 0.35
+      },
+      {
+        "name": "Reinforcements",
+        "type": "summon",
+        "chance": 5,
+        "chargeTime": 0.5,
+        "staggerChance": 0.0,
+        "msgPrep": "Harpie screeches loudly...",
+        "msgHit": "Harpie called for reinforcements!",
+        "summonId": "harpie_01"
+      }
+    ]
   }
 ]

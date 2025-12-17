@@ -13,6 +13,7 @@ const skillsData = skillsDataJson as unknown as Skill[];
 const classesData = classesDataJson as unknown as Class[];
 const enemiesData = enemiesDataJson as unknown as Enemy[];
 
+// --- HELPERS ---
 const getRoom = (id: string): Room | undefined => roomsData.find(r => r.id === id);
 const findItem = (q: string): Item | undefined => itemsData.find(i => i.id === q || i.name.toLowerCase() === q || i.aliases?.includes(q));
 const findSkill = (q: string): Skill | undefined => skillsData.find(s => s.id === q || s.name.toLowerCase() === q || s.aliases?.includes(q));
@@ -58,6 +59,8 @@ const handleDialogue = (input: string, currentState: GameState) => {
   return false;
 };
 
+// --- COMMAND HANDLERS ---
+
 const cmdLook = (args: string, currentState: GameState) => {
   const room = getRoom(currentState.currentRoomId);
   if (!room) return;
@@ -82,6 +85,37 @@ const cmdExamine = (args: string, currentState: GameState) => {
     const key = Object.keys(room.interactables).find(k => k.toLowerCase() === target);
     if (key) {
       const obj = room.interactables[key];
+      
+      // --- EVENT TRIGGERS ---
+      if (obj.onOpen === 'battle' && obj.ambushEnemyId) {
+          store.getState().addLog(obj.message);
+          const g = enemiesData.find(e => e.id === obj.ambushEnemyId);
+          if (g) {
+              const enemies = [{ 
+                  ...g, 
+                  id: `e${Date.now()}`, 
+                  name: g.name, 
+                  hp: g.hp, 
+                  maxHp: g.maxHp, 
+                  status: [], 
+                  moves: g.moves,
+                  state: 'idle',
+                  atbTimer: 3,
+                  phases: []
+              } as Enemy];
+              store.getState().startCombat(enemies);
+          }
+          return;
+      }
+      
+      if (obj.onOpen === 'heal') {
+          store.getState().addLog(obj.message);
+          store.getState().addLog("You rest and recover your strength.");
+          store.getState().fullRestore();
+          return;
+      }
+      // ----------------------
+
       if (key === "prisoner" || key === "rex") {
         store.getState().setDialogue("rex_intro");
         store.getState().setInputLock(true);
@@ -113,6 +147,7 @@ const cmdMove = (dir: string, currentState: GameState) => {
   const directionMap: { [key: string]: string } = { n: 'north', s: 'south', e: 'east', w: 'west', u: 'up', d: 'down' };
   const d = directionMap[dir] || dir;
 
+  // --- AMBUSH LOGIC FOR CELL DOOR ---
   if (currentState.currentRoomId === 'room_01_cell' && d === 'west') {
       const doorId = 'room_01_cell_door';
       if (!currentState.lootedChests.includes(doorId)) {
@@ -120,7 +155,17 @@ const cmdMove = (dir: string, currentState: GameState) => {
           const g = enemiesData.find(e => e.id === 'guard_01');
           if (g) {
               const enemies = ['A', 'B', 'C'].map((l, i) => ({ 
-                  ...g, id: `e${Date.now()}_${i}`, name: `${g.name} ${l}`, hp: g.hp, maxHp: g.maxHp, status: [], loot: [...(g.loot||[])] 
+                  ...g, 
+                  id: `e${Date.now()}_${i}`, 
+                  name: `${g.name} ${l}`, 
+                  hp: g.hp, 
+                  maxHp: g.maxHp, 
+                  status: [], 
+                  moves: g.moves || [],
+                  loot: [...(g.loot||[])],
+                  state: 'idle',
+                  atbTimer: Math.random() * 2 + 2,
+                  phases: []
               } as Enemy));
               store.getState().startCombat(enemies);
               store.getState().setChestLooted(doorId); 
@@ -237,30 +282,19 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
   const actorIndex = currentState.party.findIndex(c => c.id === currentActorId);
   const actor = currentState.party[actorIndex];
 
-  // --- UPDATED ARGUMENT PARSING (Priority: Skill > Actor Name) ---
-  let cleanArgs = args;
   const potentialName = args.split(" ")[0];
   const namedIndex = resolvePartyIndex(potentialName, currentState.party);
   
-  // Only treat the first word as an ACTOR NAME if:
-  // 1. It resolves to a valid party member
-  // 2. That member is NOT the current actor (implies switching control)
-  // 3. AND... checks for collision: The word is NOT also a known skill/item alias
+  // Ambiguity Check: Is the first word a Name or a Skill?
   const potentialSkill = findSkill(potentialName);
   const potentialItem = findItem(potentialName);
   const isAmbiguousAlias = !!potentialSkill || !!potentialItem;
 
-  // If it's a name, not the current actor, AND NOT a skill alias (or if it is an alias, we aren't using "cast"), treat as actor switch.
-  // Actually, simplest fix: If I am "Fighter", and I type "h", and "h" is "Healer" (party member) AND "Heal" (skill)...
-  // Context matters.
-  
   let intendedActorChange = false;
   if (namedIndex !== -1 && currentState.party[namedIndex].id !== currentActorId) {
-      // It matches a different character. Is it also a skill?
+      // If matches name, ONLY treat as actor switch if it's NOT a skill.
       if (isAmbiguousAlias) {
-          // If it matches a skill, assume player meant the SKILL for the CURRENT actor.
-          // e.g. "h" -> Heal, not Healer.
-          intendedActorChange = false;
+          intendedActorChange = false; 
       } else {
           intendedActorChange = true;
       }
@@ -271,9 +305,11 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
       return;
   }
 
-  // If we decided it wasn't an actor change, proceed with args as-is or stripped if we did strict name matching logic before.
-  // In this simplified logic, we just don't strip the name if we decided it was a skill.
-  // ------------------------------------------------------------------
+  let cleanArgs = args;
+  // Only strip the name if it wasn't ambiguous
+  if (namedIndex !== -1 && !isAmbiguousAlias) {
+      cleanArgs = args.substring(potentialName.length).trim();
+  }
 
   // Attack
   if (['attack', 'a', 'kill', 'hit'].includes(command)) {
@@ -327,7 +363,21 @@ const cmdCombatAction = (command: string, args: string, currentState: GameState)
 
     if (!actionId) { store.getState().addLog("Unknown skill or item."); return; }
 
-    const isFriendly = skill && (skill.type === 'heal' || skill.type === 'buff' || skill.type === 'revive' || skill.type === 'restore_mp');
+    // --- FIX: CHECK ITEM FRIENDLINESS TOO ---
+    let isFriendly = false;
+    if (skill) {
+        isFriendly = ['heal', 'buff', 'revive', 'restore_mp'].includes(skill.type);
+    } else if (actionId) {
+        // Check Item effects
+        const it = findItem(actionId);
+        if (it && it.effect) {
+            isFriendly = it.effect.startsWith('heal_') || 
+                         it.effect.startsWith('restore_') || 
+                         it.effect === 'revive' || 
+                         it.effect.startsWith('buff_');
+        }
+    }
+    // ----------------------------------------
     
     // If friendly, try resolving against party first
     if (isFriendly) {
@@ -427,7 +477,7 @@ const cmdOpen = (args: string, currentState: GameState) => {
 };
 
 const cmdHelp = () => {
-  store.getState().addLog("COMMANDS: look, i, stats, eq, attack, cast");
+  store.getState().addLog("COMMANDS: look, i, stats, eq, attack, cast, reset");
 };
 
 export const processCommand = (input: string) => {
@@ -532,6 +582,10 @@ export const processCommand = (input: string) => {
     case 'load':
       const loaded = store.getState().loadGame();
       if (!loaded) store.getState().addLog("No save file found.");
+      break;
+    case 'reset': 
+      store.getState().resetGame();
+      store.getState().addLog("Game Reset.");
       break;
     case 'a': case 'attack': case 'kill': case 'hit':
       cmdCombatAction(command, args, currentState); 
