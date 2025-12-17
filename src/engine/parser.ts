@@ -13,7 +13,7 @@ const skillsData = skillsDataJson as unknown as Skill[];
 const classesData = classesDataJson as unknown as Class[];
 const enemiesData = enemiesDataJson as unknown as Enemy[];
 
-// ... (Helpers: getRoom, findItem, findSkill, resolveEnemyIndex, resolvePartyIndex, handleDialogue - SAME AS BEFORE)
+// ... (Helpers - SAME)
 const getRoom = (id: string): Room | undefined => roomsData.find(r => r.id === id);
 const findItem = (q: string): Item | undefined => itemsData.find(i => i.id === q || i.name.toLowerCase() === q || i.aliases?.includes(q));
 const findSkill = (q: string): Skill | undefined => skillsData.find(s => s.id === q || s.name.toLowerCase() === q || s.aliases?.includes(q));
@@ -51,7 +51,7 @@ const handleDialogue = (input: string, currentState: GameState) => {
   return false;
 };
 
-// ... (cmdLook, cmdExamine, etc. - SAME)
+// ... (cmdLook, cmdExamine, etc - SAME)
 const cmdLook = (args: string, currentState: GameState) => {
   const room = getRoom(currentState.currentRoomId);
   if (!room) return;
@@ -382,7 +382,7 @@ const cmdUse = (args: string, currentState: GameState) => {
     store.getState().useItem(item.id, tIdx);
 };
 
-// ... (cmdOpen, cmdHelp - SAME)
+// ... (cmdOpen, cmdHelp - UPDATED)
 const cmdOpen = (args: string, currentState: GameState) => {
   const room = getRoom(currentState.currentRoomId);
   if (!room || !room.interactables) { store.getState().addLog("Nothing to open."); return; }
@@ -465,7 +465,7 @@ const cmdHelp = (args: string, currentState: GameState) => {
       };
 
       if (lowerArg === 'fighter' || lowerArg === 'f') {
-          store.getState().addLog(getClassHelp('fighter', "Fighters use heavy physical attacks to deal massive enemy damage in a single turn, and can buff himself."));
+          store.getState().addLog(getClassHelp('fighter', "Fighters use heavy physical attacks to deal massive damage to their enemies, and can buff themselves."));
           return;
       }
       if (lowerArg === 'rogue' || lowerArg === 'r') {
@@ -502,6 +502,20 @@ export const processCommand = (input: string) => {
   
   if (currentState.isGameOver) return; 
 
+  if (currentState.pendingChoice) {
+      if (currentState.pendingChoice.type === 'equip_replace') {
+          const choice = parseInt(clean);
+          if ([1, 2, 3].includes(choice)) {
+              const { charIdx, itemId } = currentState.pendingChoice.data;
+              store.getState().equipItem(charIdx, itemId, choice - 1); 
+          } else {
+              store.getState().addLog("Invalid choice. Cancelled.");
+              store.getState().setPendingChoice(null);
+          }
+          return;
+      }
+  }
+
   const parts = clean.split(" ");
   const command = parts[0].toLowerCase();
   const args = parts.slice(1).join(" ");
@@ -525,25 +539,7 @@ export const processCommand = (input: string) => {
   }
   // ------------------------------------------
 
-  // Check pending choice before input lock
-  if (currentState.pendingChoice) {
-      if (currentState.pendingChoice.type === 'equip_replace') {
-          const choice = parseInt(clean);
-          if ([1, 2, 3].includes(choice)) {
-              const { charIdx, itemId } = currentState.pendingChoice.data;
-              store.getState().equipItem(charIdx, itemId, choice - 1); 
-          } else {
-              store.getState().addLog("Invalid choice. Cancelled.");
-              store.getState().setPendingChoice(null);
-          }
-          return;
-      }
-  }
-
-  // Log user input
   store.getState().addLog(`> ${input}`);
-
-  // Checks that block gameplay commands
   if (handleDialogue(clean, currentState)) return;
   if (currentState.isInputLocked) return;
 

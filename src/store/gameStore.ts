@@ -40,9 +40,8 @@ export interface GameState {
   battleQueue: string[];
   isGameOver: boolean;
 
-  // --- SYSTEM STATE ---
   pendingChoice: { type: string; data: any } | null;
-  introTimers: number[]; // Store timer IDs to cancel them
+  introTimers: number[];
   
   setPendingChoice: (c: { type: string; data: any } | null) => void;
   addLog: (m: string) => void;
@@ -59,7 +58,7 @@ export interface GameState {
   
   resetGame: () => void;
   runIntro: () => void;
-  clearIntro: () => void; // Stops the text sequence
+  clearIntro: () => void;
   
   saveGame: () => void; 
   loadGame: () => boolean; 
@@ -73,9 +72,9 @@ export interface GameState {
 
 export const useGameStore = create<GameState>((set, get) => ({
   party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell', 
-  log: [], // Start empty for intro
+  log: [], 
   isCombat: false, activeEnemies: [], 
-  isInputLocked: true, // Start locked
+  isInputLocked: true, 
   activeDialogue: null, tempCharacterName: null,
   lootedChests: [], battleQueue: [], isGameOver: false,
   pendingChoice: null,
@@ -92,7 +91,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   addToInventory: (id) => set(s => ({ inventory: [...s.inventory, id] })),
   setChestLooted: (id) => set(s => ({ lootedChests: [...s.lootedChests, id] })),
 
-  // --- INTRO & SYSTEM COMMANDS ---
   clearIntro: () => {
       const s = get();
       s.introTimers.forEach(t => clearTimeout(t));
@@ -100,13 +98,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   runIntro: () => {
-      get().clearIntro(); // Clear existing timers first
+      get().clearIntro();
       set({ log: [], isInputLocked: true, party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell' });
       
       const { addLog } = get();
       const timers: number[] = [];
 
-      // Helper to schedule text
       const schedule = (ms: number, text: string, unlock = false) => {
           const t = setTimeout(() => {
               addLog(text);
@@ -117,15 +114,16 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       addLog("In the dead of midnight, below the radiant crescent shaped moon, stood a crooked looking castle, tall and wide, at the edge of a mountain valley, nestled at the edge of a forest. A path extends out from the castle into the forest and out into a clearing with a small port town. At the end of this eerie path, heading from the village towards the castle, were three shadows on a mission - to rescue the port town chapel's head priest - Father Lin.");
 
-      schedule(10000, "His kidnapping was swift, and happened a mere five hours ago, when the three shadows walking through the forest stopped in the port town for a glass of ale. A message left in his residence taunting the townsfolk by a certain infamous Baron Vladimir of Nocturn Castle encouraged adventurers to dare and seek out Father Lin, \"so when you do find him, you can join him in his wonderful sacrifice\".");
+      // --- HALVED TIMES ---
+      schedule(5000, "His kidnapping was swift, and happened a mere five hours ago, when the three shadows walking through the forest stopped in the port town for a glass of ale. A message left in his residence taunting the townsfolk by a certain infamous Baron Vladimir of Nocturn Castle encouraged adventurers to dare and seek out Father Lin, \"so when you do find him, you can join him in his wonderful sacrifice\".");
       
-      schedule(20000, "Who would be so brazen to leave such a taunt, and with the town knowing his whereabouts! How powerful is this man? The town immediately put a bounty on Baron Vladimir's head, but this didn't persuade the town's mercenaries' guild to act on this, who were all stricken with fear and grief.");
+      schedule(10000, "Who would be so brazen to leave such a taunt, and with the town knowing his whereabouts! How powerful is this man? The town immediately put a bounty on Baron Vladimir's head, but this didn't persuade the town's mercenaries' guild to act on this, who were all stricken with fear and grief.");
       
-      schedule(28000, "That didn't stop the three of you heading out into the forest to claim the bounty and save the man's life. The townspeople warned of guards and creatures at Nocturn Castle's entrance, but that's all the information they know.");
+      schedule(14000, "That didn't stop the three of you heading out into the forest to claim the bounty and save the man's life. The townspeople warned of guards and creatures at Nocturn Castle's entrance, but that's all the information they know.");
       
-      schedule(32000, "Welcome to Nocturn.");
+      schedule(16000, "Welcome to Nocturn.");
       
-      schedule(33000, "Who are you?", true); // Unlocks input
+      schedule(17000, "Who are you?", true); // Unlocks input
 
       set({ introTimers: timers });
   },
@@ -151,7 +149,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       const raw = localStorage.getItem('rpg_save_v1');
       if (!raw) return false;
       
-      // Stop the intro if it's running
       get().clearIntro();
 
       const data = JSON.parse(raw);
@@ -161,7 +158,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       });
       return true;
   },
-  // -------------------------------
 
   fullRestore: () => set(s => {
       const p = s.party.map(c => ({...c, hp: c.maxHp, mp: c.maxMp, status: []}));

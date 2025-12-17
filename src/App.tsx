@@ -34,11 +34,9 @@ function App() {
       return aliases.reduce((a, b) => a.length <= b.length ? a : b);
   };
 
-  // --- TRIGGER INTRO ON MOUNT ---
   useEffect(() => {
       runIntro();
-  }, []); // Run once
-  // ------------------------------
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => tick(1), 1000);
@@ -163,7 +161,7 @@ function App() {
            )) : null}
         </div>
         <div style={{ marginTop:'10px', fontSize:'0.8em', color:'#666' }}>
-           i, stats, look, save, load
+           help (h), inventory (i), stats, look (l), save, load, reset
         </div>
       </div>
     );
@@ -219,7 +217,6 @@ function App() {
                     </div>
                 )}
                 
-                {/* STATUS EFFECTS */}
                 {char.status.length > 0 && <div style={{fontSize:'0.7rem', color:'orange', marginTop:'2px'}}>
                     {char.status.map(s => `${s.type} (${Math.ceil(s.duration)}s)`).join(', ')}
                 </div>}
