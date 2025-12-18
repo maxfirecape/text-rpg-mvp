@@ -86,9 +86,8 @@ function App() {
   };
 
   const renderContextPanel = () => {
-    // --- FIX: HIDE ACTIONS DURING CREATION ---
+    // Hide Context Panel during Character Creation
     if (party.length < 3) return null;
-    // ----------------------------------------
 
     if (isCombat) {
       const activeCharId = battleQueue[0];
@@ -165,7 +164,7 @@ function App() {
            )) : null}
         </div>
         <div style={{ marginTop:'10px', fontSize:'0.8em', color:'#666' }}>
-           help (h), inventory (i), stats, look (l), save, load, reset
+           help (h), inventory (i), stats, look (l), check / examine (x), save, load, reset
         </div>
       </div>
     );
@@ -187,7 +186,6 @@ function App() {
       )}
 
       <div className="sidebar">
-        {/* --- FIX: PARTY SECTION (Auto Height) --- */}
         <div className="panel-section tech-border" style={{ flex: '0 0 auto', maxHeight:'60%', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom:'5px' }}>
                <span style={{ color: 'var(--sys-cyan)', fontWeight:'bold' }}>PARTY</span>
@@ -231,8 +229,7 @@ function App() {
             ))}
         </div>
 
-        {/* --- FIX: CONTEXT SECTION (Fills Remaining Space) --- */}
-        {/* Only show if party is full (or at least 3) */}
+        {/* CONTEXT SECTION (Fills Remaining Space) */}
         {party.length >= 3 && (
             <div className="panel-section tech-border" style={{ flex: 1, minHeight: 0, marginTop: '10px' }}>
                 {renderContextPanel()}

@@ -2,7 +2,7 @@
   {
     "id": "room_01_cell",
     "name": "Nocturn Castle Gate",
-    "description": "Three heroes are locked in a cell with cobblestone floors and dimly lit torch lights.",
+    "description": "The three of you have walked out of the woods into a gravel pathway, with a gateway and some hedges blocking the part forward. Guards are to the north, standing under the moonlit shadows of Castle Nocturn. This is the debug room, whose combat tutorial is battlewarden, or moving north.",
     "image": "https://placehold.co/600x400/1a1a2e/FFF?text=Nocturn+Gate",
     "exits": {
       "north": "room_02_corridor"
@@ -34,9 +34,9 @@
           "onOpen": "battle",
           "ambushEnemyId": "harpie_01"
       },
-      "prisoner": { "type": "npc", "name": "Rex", "message": "He is staring at you, smirking." },
-      "desk": { "message": "A typical desk." },
-      "toilet": { "message": "It’s excruciatingly cold." }
+      "dialoguetest": { "type": "npc", "name": "Rex", "message": "He is staring at you, smirking." },
+      "statue": { "message": "A bronze statue of a tall, muscular man pointing skyward" },
+      "signpost": { "message": "North: Old Castle Nocturn, West: To mountains, South: To Taliaport, East: To Nocturn Forest Trail" }
     }
   },
   {
