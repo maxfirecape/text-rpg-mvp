@@ -2,7 +2,7 @@
   {
     "id": "rogue",
     "name": "Rogue",
-    "stats": { "str": 10, "con": 8, "dex": 20, "wis": 10, "hitChance": 85, "skillSlots": 6 },
+    "stats": { "str": 10, "con": 8, "dex": 20, "wis": 10, "hitChance": 85, "skillSlots": 9 },
     "startingEquipment": ["dual_knives", "clothes", "gloves", "boots", "lucky_charm"],
     "startingItems": ["hp_potion", "hp_potion", "hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick", "lockpick"],
     "startingCredits": 200,
@@ -22,7 +22,7 @@
   {
     "id": "fighter",
     "name": "Fighter",
-    "stats": { "str": 14, "con": 14, "dex": 5, "wis": 10, "hitChance": 85, "skillSlots": 5 },
+    "stats": { "str": 16, "con": 14, "dex": 5, "wis": 10, "hitChance": 85, "skillSlots": 9 },
     "startingEquipment": ["longsword", "clothes", "gloves", "boots", "lucky_charm"],
     "startingItems": ["hp_potion", "hp_potion", "hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion"],
     "startingCredits": 100,
@@ -47,7 +47,7 @@
   {
     "id": "cleric",
     "name": "Cleric",
-    "stats": { "str": 12, "con": 25, "dex": 5, "wis": 14, "hitChance": 80, "skillSlots": 7 },
+    "stats": { "str": 10, "con": 25, "dex": 5, "wis": 14, "hitChance": 80, "skillSlots": 7 },
     "startingEquipment": ["staff", "clothes", "gloves", "boots", "lucky_charm"],
     "startingItems": ["hp_potion", "hp_potion", "hp_potion", "hp_potion", "hp_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "skill_potion", "phoenix_potion", "phoenix_potion", "tent"],
     "startingCredits": 100,

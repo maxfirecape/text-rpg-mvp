@@ -103,8 +103,7 @@ const cmdExamine = (args: string, currentState: GameState) => {
           return;
       }
 
-      // --- UPDATED: DIALOGUETEST ---
-      if (key === "dialoguetest" || key === "rex") {
+      if (key === "prisoner" || key === "rex") {
         store.getState().setDialogue("rex_intro");
         store.getState().setInputLock(true);
         setTimeout(() => {
@@ -116,7 +115,6 @@ const cmdExamine = (args: string, currentState: GameState) => {
       } else {
         store.getState().addLog(obj.message || "You see nothing special.");
       }
-      // -----------------------------
       return;
     }
   }
@@ -568,7 +566,7 @@ export const processCommand = (input: string) => {
       }
 
       store.getState().setTempName(clean);
-      store.getState().addLog(`Welcome ${clean}. Choose Class: [rogue (r)], [fighter (f)], [wizard (w)], [cleric (c)], or press 'help' for general help or 'help [class]' for class help.`);
+      store.getState().addLog(`Welcome ${clean}. Choose Class: [rogue (r)], [fighter (f)], [wizard (w)], [cleric (c)], or press 'help (h)' for general help or 'help [class]' for class help.`);
     } else {
       if (command === 'help' || command === 'h') {
           cmdHelp(args, currentState);

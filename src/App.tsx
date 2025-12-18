@@ -164,7 +164,7 @@ function App() {
            )) : null}
         </div>
         <div style={{ marginTop:'10px', fontSize:'0.8em', color:'#666' }}>
-           help (h), inventory (i), stats, look (l), check / examine (x), save, load, reset
+           help (h), inventory (i), stats, look (l), check / examine (x), use (u) [item], Character and Enemy Names (ID Numbers), cast (c), save, load, reset
         </div>
       </div>
     );

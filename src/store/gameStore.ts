@@ -117,7 +117,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       // --- TIMINGS SCALED BY 1.4 ---
       schedule(11200, "His kidnapping was swift, and happened a mere five hours ago, when the three shadows walking through the forest stopped in the port town for a glass of ale. A message left in his residence taunting the townsfolk by a certain infamous Baron Vladimir of Nocturn Castle encouraged adventurers to dare and seek out Father Lin, \"so when you do find him, you can join him in his wonderful sacrifice\".");
       
-      schedule(22400, "Who would be so brazen to leave such a taunt, and with the town knowing his whereabouts! How powerful is this man? The town immediately put a bounty on Baron Vladimir's head, but this didn't persuade the town's mercenaries' guild to act on this, who were all stricken with fear and grief.");
+      schedule(22400, "Who would be so brazen to leave such a taunt, and with the town knowing his whereabouts?! How powerful is this man? The town immediately put a bounty on Baron Vladimir's head, but this didn't persuade the town's mercenaries' guild to act on this, who were all stricken with fear and grief.");
       
       schedule(30800, "That didn't stop the three of you heading out into the forest to claim the bounty and save the man's life. The townspeople warned of guards and creatures at Nocturn Castle's entrance, but that's all the information they know.");
       
