@@ -11,7 +11,7 @@ const cleanPath = (p: string) => (BASE.endsWith('/') ? BASE + p : BASE + '/' + p
 
 const AUDIO_INTRO = cleanPath("characterCreation.m4a");
 const AUDIO_CHAR_INIT = cleanPath("characterInit.m4a"); 
-const AUDIO_COMBAT = cleanPath("testbattle.m4a"); // <--- UPDATED TO testbattle.m4a
+const AUDIO_COMBAT = cleanPath("battle.mp3");
 const AUDIO_AMBIANCE = cleanPath("rain.mp3");
 
 function App() {
@@ -32,6 +32,7 @@ function App() {
   
   const [input, setInput] = useState("");
   const [isMuted, setIsMuted] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false); // <--- NEW: Interaction Check
   const logEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(new Audio());
 
@@ -42,14 +43,22 @@ function App() {
       return aliases.reduce((a, b) => a.length <= b.length ? a : b);
   };
 
-  useEffect(() => {
-      runIntro();
-  }, []);
+  // --- START GAME HANDLER ---
+  const handleStartGame = () => {
+      setHasStarted(true);
+      runIntro(); // Start the text sequence
+      
+      // Force audio context to unlock
+      const audio = audioRef.current;
+      audio.play().catch(() => {}); 
+  };
+  // --------------------------
 
   useEffect(() => {
+    if (!hasStarted) return; // Don't tick until started
     const interval = setInterval(() => tick(1), 1000);
     return () => clearInterval(interval);
-  }, [tick]);
+  }, [tick, hasStarted]);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -57,6 +66,8 @@ function App() {
 
   // --- AUDIO LOGIC ---
   useEffect(() => {
+    if (!hasStarted) return; // Silent until interaction
+
     const audio = audioRef.current;
     audio.volume = 0.4;
     
@@ -104,7 +115,7 @@ function App() {
       // Resume if unmuted
       audio.play().catch((e) => { console.log("Audio resume failed:", e); });
     }
-  }, [isCombat, isMuted, party.length, characterInitPlayed]); 
+  }, [isCombat, isMuted, party.length, characterInitPlayed, hasStarted]); 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,6 +239,27 @@ function App() {
 
   return (
     <div className="game-layout">
+      {/* START OVERLAY */}
+      {!hasStarted && (
+          <div style={{
+              position:'absolute', top:0, left:0, width:'100%', height:'100%', 
+              background:'rgba(2, 11, 20, 1)', zIndex:9999, display:'flex', flexDirection:'column',
+              alignItems:'center', justifyContent:'center', color:'cyan'
+          }}>
+              <h1 style={{fontSize:'3rem', margin:'0 0 20px 0', textShadow:'0 0 10px cyan'}}>NEVERENDING NIGHT</h1>
+              <button 
+                  onClick={handleStartGame}
+                  style={{
+                      background:'transparent', border:'2px solid cyan', color:'cyan', 
+                      padding:'15px 40px', fontSize:'1.5rem', cursor:'pointer',
+                      boxShadow:'0 0 15px rgba(0, 255, 255, 0.3)', borderRadius:'4px'
+                  }}
+              >
+                  START GAME
+              </button>
+          </div>
+      )}
+
       {isGameOver && (
           <div style={{
               position:'absolute', top:0, left:0, width:'100%', height:'100%', 
