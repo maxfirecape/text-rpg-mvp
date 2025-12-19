@@ -5,8 +5,15 @@ import roomsData from './data/rooms.json';
 import skillsData from './data/skills.json';
 import itemsData from './data/items.json';
 
-const AUDIO_COMBAT = "/battle.mp3"; 
-const AUDIO_AMBIANCE = "/dungeon.mp3";
+// --- AUDIO CONFIGURATION ---
+const BASE = import.meta.env.BASE_URL; 
+const cleanPath = (p: string) => (BASE.endsWith('/') ? BASE + p : BASE + '/' + p);
+
+// UPDATED EXTENSIONS:
+const AUDIO_INTRO = cleanPath("characterCreation.m4a");
+const AUDIO_CHAR_INIT = cleanPath("characterInit.m4a"); 
+const AUDIO_COMBAT = cleanPath("battle.mp3");
+const AUDIO_AMBIANCE = cleanPath("dungeon.mp3");
 
 function App() {
   const party = useGameStore(state => state.party);
@@ -21,6 +28,8 @@ function App() {
   const isGameOver = useGameStore(state => state.isGameOver);
   const resetGame = useGameStore(state => state.resetGame);
   const runIntro = useGameStore(state => state.runIntro);
+  const characterInitPlayed = useGameStore(state => state.characterInitPlayed);
+  const setCharInitPlayed = useGameStore(state => state.setCharInitPlayed);
   
   const [input, setInput] = useState("");
   const [isMuted, setIsMuted] = useState(false);
@@ -47,16 +56,56 @@ function App() {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [log]);
 
+  // --- AUDIO LOGIC ---
   useEffect(() => {
     const audio = audioRef.current;
     audio.volume = 0.4;
-    if (isMuted) { audio.pause(); return; }
-    const track = isCombat ? AUDIO_COMBAT : AUDIO_AMBIANCE;
+    
+    if (isMuted) { 
+        audio.pause(); 
+        return; 
+    }
+
+    let track = AUDIO_AMBIANCE; 
+    let shouldLoop = true;
+    
+    // 1. Character Creation (Loop)
+    if (party.length < 3) {
+        track = AUDIO_INTRO; 
+    } 
+    // 2. Character Init Jingle (One-shot)
+    else if (!characterInitPlayed) {
+        track = AUDIO_CHAR_INIT;
+        shouldLoop = false;
+    } 
+    // 3. Combat (Loop)
+    else if (isCombat) {
+        track = AUDIO_COMBAT; 
+    }
+    // 4. Exploration (Loop) - Default
+
+    // Logic to switch tracks smoothly
     if (!audio.src.includes(track)) {
-      audio.src = track; audio.loop = true; 
-      audio.play().catch(() => {});
-    } else if (audio.paused) audio.play().catch(() => {});
-  }, [isCombat, isMuted]);
+      audio.src = track; 
+      audio.loop = shouldLoop; 
+      
+      // Attempt play (catch error if user hasn't clicked yet)
+      audio.play().catch((e) => { console.log("Audio play failed:", e); });
+
+      // Handle One-Shot Completion for Init Jingle
+      if (track === AUDIO_CHAR_INIT) {
+          audio.onended = () => {
+              setCharInitPlayed(); // Updates store -> triggers re-render -> switches to Ambiance
+          };
+      } else {
+          audio.onended = null; // Clear listener for loops
+      }
+
+    } else if (audio.paused) {
+      // Resume if unmuted
+      audio.play().catch((e) => { console.log("Audio resume failed:", e); });
+    }
+  }, [isCombat, isMuted, party.length, characterInitPlayed]); 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +135,6 @@ function App() {
   };
 
   const renderContextPanel = () => {
-    // Hide Context Panel during Character Creation
     if (party.length < 3) return null;
 
     if (isCombat) {
@@ -163,8 +211,17 @@ function App() {
              </div>
            )) : null}
         </div>
-        <div style={{ marginTop:'10px', fontSize:'0.8em', color:'#666' }}>
-           help (h), inventory (i), stats, look (l), check / examine (x), use (u) [item], Character and Enemy Names (ID Numbers), cast (c), save, load, reset
+        <div style={{ marginTop:'10px', fontSize:'0.8em', color:'#666', display:'flex', flexDirection:'column', gap:'2px' }}>
+           <div>help (h)</div>
+           <div>inventory (i)</div>
+           <div>stats</div>
+           <div>look (l)</div>
+           <div>check / examine (x)</div>
+           <div>equipment (eq)</div>
+           <div>use (u) [item]</div>
+           <div>Character and Enemy Names (ID Numbers)</div>
+           <div>cast (c)</div>
+           <div>save, load, reset</div>
         </div>
       </div>
     );
