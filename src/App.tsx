@@ -9,11 +9,10 @@ import itemsData from './data/items.json';
 const BASE = import.meta.env.BASE_URL; 
 const cleanPath = (p: string) => (BASE.endsWith('/') ? BASE + p : BASE + '/' + p);
 
-// UPDATED EXTENSIONS:
 const AUDIO_INTRO = cleanPath("characterCreation.m4a");
 const AUDIO_CHAR_INIT = cleanPath("characterInit.m4a"); 
-const AUDIO_COMBAT = cleanPath("battle.mp3");
-const AUDIO_AMBIANCE = cleanPath("dungeon.mp3");
+const AUDIO_COMBAT = cleanPath("testbattle.m4a"); // <--- UPDATED TO testbattle.m4a
+const AUDIO_AMBIANCE = cleanPath("rain.mp3");
 
 function App() {
   const party = useGameStore(state => state.party);

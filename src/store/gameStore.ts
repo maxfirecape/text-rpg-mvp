@@ -43,6 +43,9 @@ export interface GameState {
   pendingChoice: { type: string; data: any } | null;
   introTimers: number[];
   
+  characterInitPlayed: boolean; 
+  setCharInitPlayed: () => void;
+
   setPendingChoice: (c: { type: string; data: any } | null) => void;
   addLog: (m: string) => void;
   setRoom: (id: string) => void;
@@ -51,6 +54,7 @@ export interface GameState {
   setTempName: (n: string|null) => void;
   addCharacter: (c: Character, cr: number) => void;
   addToInventory: (id: string) => void;
+  removeFromInventory: (id: string) => void;
   equipItem: (idx: number, id: string, replaceSlot?: number) => void;
   unequipItem: (idx: number, s: string, i?: number) => void;
   useItem: (itemId: string, targetIdx?: number) => void;
@@ -79,6 +83,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   lootedChests: [], battleQueue: [], isGameOver: false,
   pendingChoice: null,
   introTimers: [],
+  
+  characterInitPlayed: false,
+  setCharInitPlayed: () => set({ characterInitPlayed: true }),
 
   addLog: (m) => set(s => ({ log: [...s.log, m] })),
   setRoom: (id) => set({ currentRoomId: id }),
@@ -89,6 +96,17 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   addCharacter: (c, cr) => set(s => ({ party: [...s.party, { ...c, atbTimer: 3.5 }], credits: s.credits + cr, tempCharacterName: null })),
   addToInventory: (id) => set(s => ({ inventory: [...s.inventory, id] })),
+  
+  removeFromInventory: (id) => set(s => {
+      const idx = s.inventory.indexOf(id);
+      if (idx > -1) {
+          const newInv = [...s.inventory];
+          newInv.splice(idx, 1);
+          return { inventory: newInv };
+      }
+      return {};
+  }),
+
   setChestLooted: (id) => set(s => ({ lootedChests: [...s.lootedChests, id] })),
 
   clearIntro: () => {
@@ -99,7 +117,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   runIntro: () => {
       get().clearIntro();
-      set({ log: [], isInputLocked: true, party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell' });
+      set({ log: [], isInputLocked: true, party: [], inventory: [], credits: 0, currentRoomId: 'room_01_cell', characterInitPlayed: false });
       
       const { addLog } = get();
       const timers: number[] = [];
@@ -114,7 +132,6 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       addLog("In the dead of midnight, below the radiant crescent shaped moon, stood a crooked looking castle, tall and wide, at the edge of a mountain valley, nestled at the edge of a forest. A path extends out from the castle into the forest and out into a clearing with a small port town. At the end of this eerie path, heading from the village towards the castle, were three shadows on a mission - to rescue the port town chapel's head priest - Father Lin.");
 
-      // --- TIMINGS SCALED BY 1.4 ---
       schedule(11200, "His kidnapping was swift, and happened a mere five hours ago, when the three shadows walking through the forest stopped in the port town for a glass of ale. A message left in his residence taunting the townsfolk by a certain infamous Baron Vladimir of Nocturn Castle encouraged adventurers to dare and seek out Father Lin, \"so when you do find him, you can join him in his wonderful sacrifice\".");
       
       schedule(22400, "Who would be so brazen to leave such a taunt, and with the town knowing his whereabouts?! How powerful is this man? The town immediately put a bounty on Baron Vladimir's head, but this didn't persuade the town's mercenaries' guild to act on this, who were all stricken with fear and grief.");
@@ -123,7 +140,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       
       schedule(37800, "Welcome to Everlasting Night.");
       
-      schedule(39200, "Who are you?", true); // Unlocks input
+      schedule(39200, "Who are you?", true); 
 
       set({ introTimers: timers });
   },
@@ -154,7 +171,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       const data = JSON.parse(raw);
       set({
         party: data.party, inventory: data.inventory, credits: data.credits, currentRoomId: data.currentRoomId,
-        lootedChests: data.lootedChests || [], log: ["Game Loaded."], isCombat: false, activeEnemies: [], battleQueue: [], isGameOver: false, isInputLocked: false, pendingChoice: null
+        lootedChests: data.lootedChests || [], log: ["Game Loaded."], isCombat: false, activeEnemies: [], battleQueue: [], isGameOver: false, isInputLocked: false, pendingChoice: null,
+        characterInitPlayed: true
       });
       return true;
   },
@@ -395,6 +413,48 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (nextParty.every(p => p.hp <= 0)) {
         return { party: nextParty, activeEnemies: nextEnemies, log: [...newLog, "PARTY WIPED OUT!"], isGameOver: true };
     }
+
+    // --- FIX: CHECK VICTORY IN TICK ---
+    if (nextEnemies.length > 0 && nextEnemies.every(e => e.hp <= 0)) {
+         const xpTotal = nextEnemies.reduce((sum, en) => sum + en.xpReward, 0);
+         const share = Math.floor(xpTotal / nextParty.length);
+         const levelUpLogs: string[] = [];
+
+         nextParty.forEach(c => {
+            const oldLvl = c.level; 
+            c.xp += share;
+            const newSkillsLearned: string[] = [];
+
+            while(c.xp >= c.maxXp) {
+               c.xp -= c.maxXp; 
+               c.level++; 
+               c.maxXp = Math.floor(c.maxXp * 1.5);
+               c.maxHp += 5; c.hp = c.maxHp;
+               
+               const cls = classesData.find(cl => cl.id === c.classId);
+               const newSkillsStr = cls?.unlocks ? cls.unlocks[c.level.toString()] : null;
+               
+               if(newSkillsStr) {
+                   const newSkills = newSkillsStr.split(',').map(s => s.trim());
+                   newSkills.forEach(k => { 
+                       if(!c.unlockedSkills.includes(k)) {
+                           c.unlockedSkills.push(k); 
+                           const realSkill = allSkills.find(s => s.id === k);
+                           newSkillsLearned.push(realSkill?.name || k);
+                       }
+                   });
+               }
+            }
+            if (c.level > oldLvl) {
+                let msg = `|L| ${c.name} reached Lv ${c.level}!`;
+                if (newSkillsLearned.length > 0) msg += ` Learned: ${newSkillsLearned.join(', ')}`;
+                levelUpLogs.push(msg);
+            }
+         });
+         
+         return { activeEnemies: nextEnemies, party: nextParty, isCombat: false, battleQueue: [], log: [...newLog, `VICTORY! +${xpTotal} XP`, ...levelUpLogs] };
+    }
+    // ----------------------------------
 
     const cleanQueue = nextQueue.filter(qid => {
         const c = nextParty.find(p => p.id === qid);
